@@ -42,7 +42,7 @@ export default class HypeTrack {
      * @param {*} update - the update data
      */
     async _processHype(combat, update) {
-        if (!Number.isNumeric(update.turn) || !combat.combatants.length || !this.playlist) {
+        if (!Number.isNumeric(update.turn) || !combat.combatants.size || !this.playlist) {
             return;
         }
 
