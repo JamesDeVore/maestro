@@ -1,5 +1,6 @@
 import * as MAESTRO from "./config.js";
 import * as Playback from "./playback.js";
+window.Playback = Playback;
 
 
 export function _onRenderPlaylistDirectory(app, html, data) {
