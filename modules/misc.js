@@ -254,6 +254,7 @@ export function _onRenderChatMessage(message, html, data) {
  * @param {*} message
  */
 function playCriticalSuccessFailure(message) {
+    if(!message.roll.parts && message.roll.terms) message.roll.parts = message.roll.terms;
     if ( !game.user.isGM || !message.isRoll || !message.isContentVisible || !message.roll.parts.length ) return;
   
     // Highlight rolls where the first part is a d20 roll
@@ -264,6 +265,7 @@ function playCriticalSuccessFailure(message) {
     // Ensure it is an un-modified d20 roll
     const isD20 = (d.faces === 20) && ( d.results.length === 1 );
     if ( !isD20 ) return;
+    if(!d.rolls) d.rolls = d.results
     const isModifiedRoll = ("success" in d.rolls[0]) || d.options.marginSuccess || d.options.marginFailure;
     if ( isModifiedRoll ) return;
 
@@ -275,9 +277,9 @@ function playCriticalSuccessFailure(message) {
     const criticalFailureSound = criticalSuccessFailureTracks.criticalFailureSound;
        
     // Play relevant sound for successes and failures
-    if ((d.options.critical && (d.total >= d.options.critical)) && (criticalSuccessPlaylist && criticalSuccessSound)) {
+    if (((d.options.critical && (d.total >= d.options.critical)) || d.total === 20) && (criticalSuccessPlaylist && criticalSuccessSound)) {
         Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist);
-    } else if ((d.options.fumble && (d.total <= d.options.fumble)) && (criticalFailurePlaylist && criticalFailureSound)) {
+    } else if (((d.options.fumble && (d.total <= d.options.fumble)) || d.total === 1) && (criticalFailurePlaylist && criticalFailureSound)) {
         Playback.playTrack(criticalFailureSound, criticalFailurePlaylist)
     }
 }

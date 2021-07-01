@@ -45,7 +45,11 @@ export async function playTrack(trackId, playlistId) {
     }
 
     if (trackId === MAESTRO.DEFAULT_CONFIG.ItemTrack.playbackModes.random) {
-        trackId = playlist._getPlaybackOrder()[0];
+        if (!playlist._getPlaybackOrder){
+            trackId = playlist.playbackOrder[0]
+        } else {
+            trackId = playlist._getPlaybackOrder()[0];
+        }
     }
 
     if(!trackId) {
