@@ -1,6 +1,6 @@
 {
-    "name":"maestro_pf2",
-    "title":"Maestro_pf2",
+    "name":"maestro",
+    "title":"Maestro",
     "description":"Adds new sound-related features such as Hype Tracks and Item Tracks. Edited for PF2e support",
     "author":"Evan Clarke (errational#2007)",
     "authors": [
@@ -41,7 +41,7 @@
       }
     ],
     "manifest":"https://raw.githubusercontent.com/JamesDeVore/maestro/master/module.json",
-    "download": "https://raw.githubusercontent.com/JamesDeVore/maestro/master/module.zip",
-    "url": "https://github.com/jamesDeVore/maestro",
+    "download": "https://github.com/JamesDeVore/maestro/archive/refs/heads/master.zip",
+    "url": "https://github.com/jamesDeVore/maestro"
   }
   
