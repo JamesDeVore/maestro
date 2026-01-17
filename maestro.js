@@ -136,7 +136,7 @@ export default class Conductor {
         }
 
         for (const actor of game.actors.contents) {
-            const oldHypeTrack = actor.getFlag(oldNamespace, MAESTRO.DEFAULT_CONFIG.HypeTrack.flagNames.track);
+            const oldHypeTrack = actor.flags?.[oldNamespace]?.[MAESTRO.DEFAULT_CONFIG.HypeTrack.flagNames.track];
             if (oldHypeTrack === undefined) {
                 continue;
             }
@@ -147,8 +147,8 @@ export default class Conductor {
         }
 
         for (const playlist of game.playlists.contents) {
-            const oldLoop = playlist.getFlag(oldNamespace, MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop);
-            const oldPrevious = playlist.getFlag(oldNamespace, MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.previousSound);
+            const oldLoop = playlist.flags?.[oldNamespace]?.[MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop];
+            const oldPrevious = playlist.flags?.[oldNamespace]?.[MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.previousSound];
 
             const newLoop = playlist.getFlag(newNamespace, MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop);
             const newPrevious = playlist.getFlag(newNamespace, MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.previousSound);
