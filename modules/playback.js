@@ -14,7 +14,7 @@ export function getPlaylistSounds(playlistId) {
         return;
     }
 
-    return game.playlists.get(playlistId).sounds;
+    return playlist.sounds?.contents ?? [];
 }
 
 /**
@@ -25,7 +25,7 @@ export function getPlaylistSound(trackId) {
     if (!this.playlist) {
         return;
     }
-    return this.playlist.sounds.find(s => s.id == trackId);
+    return this.playlist.sounds?.contents?.find(s => s.id == trackId);
 }
 
 /**
@@ -34,7 +34,7 @@ export function getPlaylistSound(trackId) {
  * @param {String} trackId - the track Id or playback mode
  */
 export async function playTrack(trackId, playlistId) {
-    if (!playlistId || !trackId) {
+    if (!playlistId) {
         return;
     }
 
@@ -45,13 +45,17 @@ export async function playTrack(trackId, playlistId) {
     }
 
     if (trackId === MAESTRO.DEFAULT_CONFIG.ItemTrack.playbackModes.random) {
-        const ids = playlist.sounds?.map(s => s.id) ?? [];
-        trackId = ids[ids.length * Math.random() | 0];
+        trackId = playlist.playbackOrder?.[0];
     }
 
-    const sound = playlist.sounds?.get(trackId);
+    if(!trackId) {
+        return;
+    }
 
-    if (!sound) return;
+    const sound = playlist.sounds?.get(trackId) ?? playlist.sounds?.contents?.find(s => s.id === trackId || s._id === trackId);
+    if (!sound) {
+        return;
+    }
 
     return await playlist.playSound(sound);
 }
@@ -75,12 +79,12 @@ export async function playPlaylist(playlistId) {
 }
 
 /**
- * Finds a Playlist sound by its name
+ * Finds a sound EmbeddedEntity by its name
  * @param {*} name 
  */
 export function findPlaylistSound(searchString, findBy="name") {
-    const playlist = game.playlists.contents.find(p => p.sounds.find(s => s[findBy] === searchString));
-    return playlist ? {playlist, sound: playlist.sounds.find(s => s[findBy] === searchString)} : null;
+    const playlist = game.playlists.contents.find(p => p.sounds?.contents?.find(s => s[findBy] === searchString));
+    return playlist ? {playlist, sound: playlist.sounds.contents.find(s => s[findBy] === searchString)} : null;
 }
 
 /**
@@ -91,22 +95,27 @@ export function findPlaylistSound(searchString, findBy="name") {
 export function playSoundByName(name, {playlist=null}={}) {
     // If no playlist provided, try to find the first matching one
     if (!playlist) {
-        let {playlist, sound} = findPlaylistSound(name);
+        let {playlist, sound} = findPlaylistSound(name) || {};
         
         if (!playlist) {
-            ui.warn(game.i18n.localize("MAESTRO.PLAYBACK.PlaySoundByName.NoPlaylist"));
+            ui.warn(game.i18n.localize("PLAYBACK.PlaySoundByName.NoPlaylist"));
             return;
         }
     }
 
-    playlist.playSound(name);
+    const sound = playlist.sounds?.contents?.find(s => s.name === name);
+    if (!sound) {
+        return;
+    }
+
+    playlist.playSound(sound);
 }
 
 /**
  * Pauses a playing howl
  * @param {*} sounds 
  */
-export async function pauseSounds(sounds) {
+export function pauseSounds(sounds) {
     if (!sounds) {
         return;
     }
@@ -115,7 +124,6 @@ export async function pauseSounds(sounds) {
         sounds = [sounds];
     }
 
-    const soundsToPause = [];
     const pausedSounds = [];
 
     for (let sound of sounds) {
@@ -124,18 +132,19 @@ export async function pauseSounds(sounds) {
         // If the sound param is a string, determine if it is a name or a path
         if (typeof(sound) === "string") {
             playlistSound = findPlaylistSound(sound)?.sound || findPlaylistSound(sound, "path")?.sound || null;
+        } else if (sound instanceof Object) {
+            const playlist = game.playlists.contents.find(p => p.sounds?.contents?.find(s => s._id === sound._id)) || null;
+            playlistSound = playlist ? playlist.sounds.contents.find(s => s._id === sound._id) : null;
         }
 
-        if (!sound instanceof PlaylistSound) {
+        if (!playlistSound) {
             return;
         }
-        
-        sound.update({playing: false, pausedTime: sound.sound.currentTime});
-        pausedSounds.push(sound);
+        const soundInstance = playlistSound.sound;
+        soundInstance?.pause();
+        pausedSounds.push(playlistSound);
     }
 
-    //const soundUpdate = await PlaylistSound.updateMany(soundsToPause);
-    //const pausedSounds = soundUpdate.filter(s => s.pausedTime);
     return pausedSounds;
 }
 
@@ -151,11 +160,8 @@ export function resumeSounds(sounds) {
     const resumedSounds = [];
 
     for (const sound of sounds) {
-        //const howl = game.audio.sounds[sound.path].howl;
-
-        //howl.play();
-        sound.update({playing: true});
-
+        const soundInstance = sound.sound;
+        soundInstance?.play();
         resumedSounds.push(sound);
     }
 
@@ -166,8 +172,13 @@ export function resumeSounds(sounds) {
  * Pauses all active playlist sounds
  */
 export function pauseAll() {
-    const activeSounds = game.playlists.contents.flatMap(p => {
-        return p.sounds?.contents?.filter(s => s.playing);
+    // Find active playlists and sounds and pause them
+    const activePlaylists = game.playlists.contents.filter(p => p.playing);
+
+    if (!activePlaylists.length) return;
+
+    const activeSounds = activePlaylists.flatMap(p => {
+        return p.sounds?.contents?.filter(s => s.playing) ?? [];
     });
 
     if (!activeSounds.length) return;

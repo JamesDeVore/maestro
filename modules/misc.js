@@ -64,7 +64,7 @@ export class MaestroConfigForm extends FormApplication {
     }
 
     return {
-      playlists: game.playlists.entities,
+      playlists: game.playlists.contents,
       criticalSuccessPlaylist: this.data.criticalSuccessPlaylist,
       criticalSuccessPlaylistSounds: this.data.criticalSuccessPlaylist
         ? Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist)
@@ -158,7 +158,7 @@ function _addPlaylistLoopToggle(html) {
       MAESTRO.MODULE_NAME,
       MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop
     );
-    const mode = playlist.data.mode;
+    const mode = playlist.mode;
     if ([-1, 2].includes(mode)) {
       button.setAttribute("class", buttonClass.concat(" disabled"));
       button.setAttribute(
@@ -226,11 +226,7 @@ function _addPlaylistLoopToggle(html) {
  */
 export function _onPreUpdatePlaylistSound(playlist, update) {
   // Return if there's no id or the playlist is not in sequential or shuffl mode
-  if (
-    !playlist.data.playing ||
-    !update._id ||
-    ![0, 1].includes(playlist.data.mode)
-  ) {
+  if (!playlist.playing || !update._id || ![0, 1].includes(playlist.mode)) {
     return;
   }
 
@@ -256,10 +252,10 @@ export function _onPreUpdatePlaylistSound(playlist, update) {
   let order;
 
   // If shuffle order exists, use that, else map the sounds to an order
-  if (playlist.data.mode === 1) {
-    order = playlist._getPlaybackOrder();
+  if (playlist.mode === 1) {
+    order = playlist.playbackOrder ?? [];
   } else {
-    order = playlist.sounds.map((s) => s._id);
+    order = (playlist.sounds?.contents ?? []).map((s) => s._id);
   }
 
   const previousIdx = order.indexOf(previousSound);
@@ -269,9 +265,8 @@ export function _onPreUpdatePlaylistSound(playlist, update) {
   );
 
   // If the previous sound was the last in the order, and playlist loop is set to false, don't play the incoming sound
-  if (previousIdx === playlist.sounds.length - 1 && playlistloop === false) {
+  if (previousIdx === (playlist.sounds?.contents?.length ?? 0) - 1 && playlistloop === false) {
     update.playing = false;
-    playlist.data.playing = false;
   }
 }
 
@@ -307,32 +302,24 @@ export function _onRenderChatMessage(message, html, data) {
 }
 
 /**
- * Play a sound for critical success or failure on d20 rolls
- * Adapted from highlightCriticalSuccessFailure in the dnd5e system
+ * Play a sound for critical success or failure on PF2e checks
  * @param {*} message
  */
 function playCriticalSuccessFailure(message) {
   if (
     !game.user.isGM ||
-    !message.isRoll ||
-    !message.isContentVisible ||
-    !message.roll.parts.length
+    !message.isContentVisible
   )
     return;
 
-  // Highlight rolls where the first part is a d20 roll
-  const roll = message.roll;
-  if (!roll.dice.length) return;
-  const d = roll.dice[0];
+  if (game.system.id !== "pf2e") {
+    return;
+  }
 
-  // Ensure it is an un-modified d20 roll
-  const isD20 = d.faces === 20 && d.results.length === 1;
-  if (!isD20) return;
-  const isModifiedRoll =
-    "success" in d.rolls[0] ||
-    d.options.marginSuccess ||
-    d.options.marginFailure;
-  if (isModifiedRoll) return;
+  const outcome = message?.flags?.pf2e?.context?.outcome;
+  if (!outcome) {
+    return;
+  }
 
   // Get the sounds
   const criticalSuccessFailureTracks = game.settings.get(
@@ -349,35 +336,13 @@ function playCriticalSuccessFailure(message) {
     criticalSuccessFailureTracks.criticalFailureSound;
 
   // Play relevant sound for successes and failures
-  let attacks = compareAttacks(message);
-  if (attacks.length > 0) {
-    attacks.forEach((result) => {
-      if (result === 0) {
-        Playback.playTrack(criticalFailureSound, criticalFailurePlaylist);
-        return;
-      } else if (result === 3) {
-        Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist);
-        return;
-      }
-    });
-  } else {
-    d.options.critical = 20;
-    d.options.fumble = 1;
-    if (
-      d.options.critical &&
-      d.total == d.options.critical &&
-      criticalSuccessPlaylist &&
-      criticalSuccessSound
-    ) {
-      Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist);
-    } else if (
-      d.options.fumble &&
-      d.total <= d.options.fumble &&
-      criticalFailurePlaylist &&
-      criticalFailureSound
-    ) {
-      Playback.playTrack(criticalFailureSound, criticalFailurePlaylist);
-    }
+  if (outcome === "criticalSuccess" && criticalSuccessPlaylist && criticalSuccessSound) {
+    Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist);
+    return;
+  }
+
+  if (outcome === "criticalFailure" && criticalFailurePlaylist && criticalFailureSound) {
+    Playback.playTrack(criticalFailureSound, criticalFailurePlaylist);
   }
 }
 
@@ -398,7 +363,7 @@ export async function _checkForCriticalPlaylist() {
     return;
   }
 
-  let playlist = game.playlists.entities.find(
+  let playlist = game.playlists.contents.find(
     (p) => p.name == MAESTRO.DEFAULT_CONFIG.Misc.criticalSuccessPlaylistName
   );
 
@@ -437,7 +402,7 @@ export async function _checkForFailurePlaylist() {
     return;
   }
 
-  let playlist = game.playlists.entities.find(
+  let playlist = game.playlists.contents.find(
     (p) => p.name == MAESTRO.DEFAULT_CONFIG.Misc.criticalFailurePlaylistName
   );
 
@@ -459,54 +424,3 @@ async function _createFailurePlaylist(create) {
   });
 }
 
-function critCheck(roll, DC) {
-  let step = 0;
-  if (roll.total >= DC + 10) {
-    step++;
-  }
-  if (roll.total <= DC - 10) {
-    step--;
-  }
-  if (roll.parts[0].rolls[0].roll == 20) {
-    step++;
-  }
-  if (roll.parts[0].rolls[0].roll == 1) {
-    step--;
-  }
-  return step;
-}
-
-function compareAttacks(message) {
-  return [...game.user.targets].map((t) => {
-    //Success step meaning:
-    // 3 = Critical
-    // 2 = success
-    // 1 = failure
-    // 0 = critical failure
-    let successStep = 1;
-
-    //getting the base level of success from the roll:
-    if (message.roll.total >= t.actor.data.data.attributes.ac.value) {
-      successStep = 2;
-    }
-
-    //Augmenting the success by criticals and natural 20s/1s:
-    successStep += critCheck(
-      message.roll,
-      t.actor.data.data.attributes.ac.value
-    );
-
-    //Ensuring the successStep doesn't somehow break the system catastrophically?
-    successStep = Math.clamp(successStep, 0, 3);
-    return successStep;
-  });
-
-  //Determining permissions, and whether to show result or not:
-  if (game.user.targets.size > 0) {
-    let chatData = {
-      user: game.user._id,
-      content: compiledMessage,
-    };
-    showResults(chatData);
-  }
-}

@@ -2,7 +2,7 @@
 import CombatTrack from "./modules/combat-track.js";
 import HypeTrack from "./modules/hype-track.js";
 import ItemTrack from "./modules/item-track.js";
-import { migrationHandler } from "./modules/migration.js";
+import * as MAESTRO from "./modules/config.js";
 import * as Misc from "./modules/misc.js";
 import * as Playback from "./modules/playback.js";
 import { registerModuleSettings } from "./modules/settings.js";
@@ -20,9 +20,9 @@ export default class Conductor {
      * Init Hook
      */
     static async _hookOnInit() {
-        Hooks.on("init", async () => {
+        Hooks.on("init", () =>{
             game.maestro = {};
-            await registerModuleSettings();
+            registerModuleSettings();
             Conductor._initHookRegistrations();
         });
     }
@@ -32,13 +32,27 @@ export default class Conductor {
      */
     static async _hookOnReady() {
         Hooks.on("ready", async () => {
+
             game.maestro.hypeTrack = new HypeTrack();
             game.maestro.itemTrack = new ItemTrack();
             game.maestro.combatTrack = new CombatTrack();
 
-            HypeTrack._onReady();
-            ItemTrack._onReady();
-            CombatTrack._onReady();
+            await Conductor._migrateLegacyNamespace();
+
+            if (game.maestro.hypeTrack) {
+                game.maestro.hypeTrack._checkForHypeTracksPlaylist();
+
+                // Hype Track Macro methods
+                game.maestro.playHype = game.maestro.hypeTrack.playHype.bind(game.maestro.hypeTrack);
+            }
+
+            if (game.maestro.itemTrack) {
+                game.maestro.itemTrack._checkForItemTracksPlaylist();
+            }
+
+            if (game.maestro.combatTrack) {
+                game.maestro.combatTrack._checkForCombatTracksPlaylist();
+            }
 
             Misc._checkForCriticalPlaylist();
             Misc._checkForFailurePlaylist();
@@ -54,11 +68,105 @@ export default class Conductor {
             window.setTimeout(Conductor._readyHookRegistrations, 500);
             //Conductor._readyHookRegistrations();
 
-            if (game.version >= "0.4.4" && Misc.isFirstGM()) {
+            if (game.user.isGM) {
                 game.maestro.migration = {};
-                migrationHandler();
             }
         });
+    }
+
+    /**
+     * Migrate settings and flags from the legacy "maestro" namespace to this fork's namespace.
+     */
+    static async _migrateLegacyNamespace() {
+        const oldNamespace = "maestro";
+        const newNamespace = MAESTRO.MODULE_NAME;
+
+        if (!game.user.isGM || oldNamespace === newNamespace) {
+            return;
+        }
+
+        const hasMigrated = game.settings.get(
+            newNamespace,
+            MAESTRO.SETTINGS_KEYS.Migration.legacyNamespaceMigrated
+        );
+        if (hasMigrated) {
+            return;
+        }
+
+        const worldSettings = game.settings.storage?.get?.("world");
+        const settingKeys = [
+            ...Object.values(MAESTRO.SETTINGS_KEYS.HypeTrack),
+            ...Object.values(MAESTRO.SETTINGS_KEYS.ItemTrack),
+            ...Object.values(MAESTRO.SETTINGS_KEYS.CombatTrack),
+            ...Object.values(MAESTRO.SETTINGS_KEYS.Misc),
+        ];
+        const skipKeys = new Set([
+            MAESTRO.SETTINGS_KEYS.Migration.currentVersion,
+            MAESTRO.SETTINGS_KEYS.Migration.legacyNamespaceMigrated,
+            MAESTRO.SETTINGS_KEYS.Misc.maestroConfigMenu,
+        ]);
+
+        for (const key of new Set(settingKeys)) {
+            if (skipKeys.has(key)) {
+                continue;
+            }
+
+            const newSettingKey = `${newNamespace}.${key}`;
+            const oldSettingKey = `${oldNamespace}.${key}`;
+            const newStored = worldSettings?.get?.(newSettingKey);
+            if (newStored?.value !== undefined) {
+                continue;
+            }
+
+            let oldValue;
+            const oldStored = worldSettings?.get?.(oldSettingKey);
+            if (oldStored) {
+                oldValue = oldStored.value;
+            } else {
+                try {
+                    oldValue = game.settings.get(oldNamespace, key);
+                } catch (err) {
+                    oldValue = undefined;
+                }
+            }
+
+            if (oldValue !== undefined) {
+                await game.settings.set(newNamespace, key, oldValue);
+            }
+        }
+
+        for (const actor of game.actors.contents) {
+            const oldHypeTrack = actor.getFlag(oldNamespace, MAESTRO.DEFAULT_CONFIG.HypeTrack.flagNames.track);
+            if (oldHypeTrack === undefined) {
+                continue;
+            }
+            const newHypeTrack = actor.getFlag(newNamespace, MAESTRO.DEFAULT_CONFIG.HypeTrack.flagNames.track);
+            if (newHypeTrack === undefined) {
+                await actor.setFlag(newNamespace, MAESTRO.DEFAULT_CONFIG.HypeTrack.flagNames.track, oldHypeTrack);
+            }
+        }
+
+        for (const playlist of game.playlists.contents) {
+            const oldLoop = playlist.getFlag(oldNamespace, MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop);
+            const oldPrevious = playlist.getFlag(oldNamespace, MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.previousSound);
+
+            const newLoop = playlist.getFlag(newNamespace, MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop);
+            const newPrevious = playlist.getFlag(newNamespace, MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.previousSound);
+
+            if (oldLoop !== undefined && newLoop === undefined) {
+                await playlist.setFlag(newNamespace, MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop, oldLoop);
+            }
+
+            if (oldPrevious !== undefined && newPrevious === undefined) {
+                await playlist.setFlag(
+                    newNamespace,
+                    MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.previousSound,
+                    oldPrevious
+                );
+            }
+        }
+
+        await game.settings.set(newNamespace, MAESTRO.SETTINGS_KEYS.Migration.legacyNamespaceMigrated, true);
     }
 
     /**
@@ -66,6 +174,7 @@ export default class Conductor {
      */
     static _initHookRegistrations() {
         Conductor._hookOnRenderPlaylistDirectory();
+        Conductor._hookOnRenderCombatTracker();
     }
 
     /**
@@ -76,7 +185,6 @@ export default class Conductor {
         Conductor._hookOnRenderActorSheet();
         Conductor._hookOnRenderItemSheet();
         Conductor._hookOnRenderChatMessage();
-        Conductor._hookOnRenderCombatTrackerConfig();
 
         // Pre-Create Hooks
         Conductor._hookOnPreCreateChatMessage();
@@ -92,7 +200,8 @@ export default class Conductor {
 
         // Delete hooks
         Conductor._hookOnDeleteCombat();
-        Conductor._hookOnDeleteItem();
+        
+        
     }
 
     /**
@@ -100,7 +209,6 @@ export default class Conductor {
      */
     static _hookOnPreUpdatePlaylist() {
         Hooks.on("preUpdatePlaylist", (playlist, update, options, userId) => {
-            // unused
         });
     }
 
@@ -108,8 +216,8 @@ export default class Conductor {
      * PreUpdate Playlist Sound Hook
      */
     static _hookOnPreUpdatePlaylistSound() {
-        Hooks.on("preUpdatePlaylistSound", (sound, update, options, userId) => {
-            Misc._onPreUpdatePlaylistSound(sound, update, options, userId);
+        Hooks.on("preUpdatePlaylistSound", (playlist, sound, update, options, userId) => {
+            Misc._onPreUpdatePlaylistSound(playlist, update);
         });
     }
 
@@ -122,18 +230,12 @@ export default class Conductor {
         });
     }
 
-    static _hookOnDeleteItem() {
-        Hooks.on("deleteItem", (item, options, userId) => {
-            ItemTrack._onDeleteItem(item, options, userId);
-        });
-    }
-
     /**
      * PreUpdate Combat Hook
      */
     static _hookOnPreUpdateCombat() {
         Hooks.on("preUpdateCombat", (combat, update, options, userId) => {
-            CombatTrack._onPreUpdateCombat(combat, update, options, userId);
+            game.maestro.combatTrack._checkCombatTrack(combat, update);
         });
     }
 
@@ -142,8 +244,8 @@ export default class Conductor {
      */
     static _hookOnUpdateCombat() {
         Hooks.on("updateCombat", (combat, update, options, userId) => {
-            HypeTrack._onUpdateCombat(combat, update, options, userId);
-            CombatTrack._onUpdateCombat(combat, update, options, userId);
+            //game.maestro.combatTrack._checkCombatTrack(combat, update);
+            game.maestro.hypeTrack._processHype(combat, update);
         });
     }
 
@@ -152,8 +254,7 @@ export default class Conductor {
      */
     static _hookOnDeleteCombat() {
         Hooks.on("deleteCombat", (combat, options, userId) => {
-            HypeTrack._onDeleteCombat(combat, options, userId);
-            CombatTrack._onDeleteCombat(combat, options, userId);
+            game.maestro.combatTrack._stopCombatTrack(combat);
         });
     }
     
@@ -162,7 +263,7 @@ export default class Conductor {
      */
     static _hookOnRenderActorSheet() {
         Hooks.on("renderActorSheet", (app, html, data) => {
-            HypeTrack._onRenderActorSheet(app, html, data);
+            game.maestro.hypeTrack._addHypeButton(app, html, data);
         });
        
     }
@@ -172,7 +273,7 @@ export default class Conductor {
      */
     static _hookOnRenderChatMessage() {
         Hooks.on("renderChatMessage", (message, html, data) => {
-            ItemTrack._onRenderChatMessage(message, html, data);
+            game.maestro.itemTrack.chatMessageHandler(message, html, data);
             Misc._onRenderChatMessage(message, html, data);
         })
     }
@@ -187,11 +288,11 @@ export default class Conductor {
     }
 
     /**
-     * Render CombatTrackerConfig Hook
+     * RenderCombatTracker Hook
      */
-    static _hookOnRenderCombatTrackerConfig() {
-        Hooks.on("renderCombatTrackerConfig", (app, html, data) => {
-            CombatTrack._onRenderCombatTrackerConfig(app, html, data);
+    static _hookOnRenderCombatTracker() {
+        Hooks.on("renderCombatTracker", (app, html, data) => {
+            CombatTrack._addCombatTrackButton(app, html, data);
         });
     }
 
@@ -199,8 +300,12 @@ export default class Conductor {
      * Render Item Sheet Hook
      */
     static _hookOnRenderItemSheet() {
+        if(!game.user.isGM) {
+            return;
+        }
+
         Hooks.on("renderItemSheet", (app, html, data) => {
-            ItemTrack._onRenderItemSheet(app, html, data);
+            game.maestro.itemTrack._addItemTrackButton(app, html, data);
         });
         
     }

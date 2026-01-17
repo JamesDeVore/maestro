@@ -1,4 +1,4 @@
-export const MODULE_NAME = "maestro";
+export const MODULE_NAME = "maestro_pf2e";
 
 export const MODULE_LABEL = "Maestro";
 
@@ -134,7 +134,8 @@ export const SETTINGS_KEYS = {
 
     get Migration() {
         return {
-            currentVersion: "currentMigrationVersion"
+            currentVersion: "currentMigrationVersion",
+            legacyNamespaceMigrated: "legacyNamespaceMigrated"
         }
     },
 

@@ -20,12 +20,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/death-save/maestro.git"
+    "url": "git+https://github.com/JamesDeVore/maestro.git"
   },
   "author": "Evan Clarke (errational)",
   "license": "SEE LICENSE IN LICENSE",
   "bugs": {
-    "url": "https://github.com/death-save/maestro/issues"
+    "url": "https://github.com/JamesDeVore/maestro/issues"
   },
-  "homepage": "https://github.com/death-save/maestro#readme"
+  "homepage": "https://github.com/JamesDeVore/maestro#readme"
 }

@@ -166,6 +166,15 @@ export const registerModuleSettings = async function() {
         }
     }),
 
+    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Migration.legacyNamespaceMigrated, {
+        name: "SETTINGS.MigrateLegacyNamespaceN",
+        hint: "SETTINGS.MigrateLegacyNamespaceH",
+        scope: "world",
+        type: Boolean,
+        default: false,
+        config: false
+    }),
+
     /* -------------------------------------------- */
     /*                     Misc                     */
     /* -------------------------------------------- */
