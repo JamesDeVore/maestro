@@ -63,7 +63,8 @@ export default class HypeTrack {
                 turn: update.turn, 
                 round: update.round,
                 combatId: combat.id,
-                combatants: combat.combatants.length
+                combatants: combat.combatants?.size ?? combat.combatants?.length ?? "undefined",
+                combatant: combat.combatant?.actor?.name ?? "none"
             });
         }
         const enabled = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.HypeTrack.enable);
@@ -72,44 +73,67 @@ export default class HypeTrack {
 
         if (!enabled) {
             if (debugLogging) {
-                console.debug("Maestro_pf2e | Hype skip: disabled");
+                console.log("Maestro_pf2e | Hype skip: disabled");
             }
             return;
         }
 
         if (!turnChanged && !roundChanged) {
             if (debugLogging) {
-                console.debug("Maestro_pf2e | Hype skip: no turn/round change", update);
+                console.log("Maestro_pf2e | Hype skip: no turn/round change", update);
             }
             return;
         }
 
-        if (!combat.combatants.length) {
+        const combatantsCount = combat.combatants?.size ?? combat.combatants?.length ?? 0;
+        if (!combatantsCount) {
             if (debugLogging) {
-                console.debug("Maestro_pf2e | Hype skip: no combatants");
+                console.log("Maestro_pf2e | Hype skip: no combatants", {
+                    combatants: combat.combatants,
+                    hasCombatants: !!combat.combatants
+                });
             }
             return;
         }
 
         if (!this.playlist) {
+            if (debugLogging) {
+                console.log("Maestro_pf2e | Hype: checking for playlist...");
+            }
             await this._checkForHypeTracksPlaylist();
             if (!this.playlist) {
                 if (debugLogging) {
-                    console.debug("Maestro_pf2e | Hype skip: no playlist");
+                    console.log("Maestro_pf2e | Hype skip: no playlist");
                 }
                 return;
             }
         }
 
-        const combatant = combat.combatant ?? combat.combatants.get(combat.turn);
+        if (debugLogging) {
+            console.log("Maestro_pf2e | Hype: getting combatant", {
+                hasCombatant: !!combat.combatant,
+                combatTurn: combat.turn,
+                combatantsSize: combat.combatants?.size ?? combat.combatants?.length
+            });
+        }
+        
+        const combatant = combat.combatant ?? (combat.combatants?.get ? combat.combatants.get(combat.turn) : null);
         if (!combatant?.actor) {
             if (debugLogging) {
-                console.debug("Maestro_pf2e | Hype skip: no combatant actor", {
+                console.log("Maestro_pf2e | Hype skip: no combatant actor", {
                     combatId: combat?.id,
-                    turn: combat?.turn
+                    turn: combat?.turn,
+                    combatant: combatant
                 });
             }
             return;
+        }
+        
+        if (debugLogging) {
+            console.log("Maestro_pf2e | Hype: found combatant", {
+                actorId: combatant.actor.id,
+                actorName: combatant.actor.name
+            });
         }
 
         // Stop any active hype tracks
@@ -121,6 +145,14 @@ export default class HypeTrack {
         const hypeTrack = this._getActorHypeTrack(combatant.actor);
         const pauseOthers = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.HypeTrack.pauseOthers);
 
+        if (debugLogging) {
+            console.log("Maestro_pf2e | Hype: track lookup", {
+                hypeTrack: hypeTrack,
+                actorId: combatant.actor.id,
+                actorName: combatant.actor.name
+            });
+        }
+
         if (!hypeTrack) {
             if (this.pausedSounds.length) {
                 // Resume any previously paused sounds
@@ -129,7 +161,7 @@ export default class HypeTrack {
             }
             
             if (debugLogging) {
-                console.debug("Maestro_pf2e | Hype skip: no track", {
+                console.log("Maestro_pf2e | Hype skip: no track", {
                     actorId: combatant.actor.id,
                     actorName: combatant.actor.name
                 });
@@ -146,8 +178,24 @@ export default class HypeTrack {
         // Find the hype track's playlist sound and play it
         const hypeTrackSound = this.playlist.sounds?.get(hypeTrack) ?? this.playlist.sounds?.contents?.find(s => s._id === hypeTrack);
 
+        if (debugLogging) {
+            console.log("Maestro_pf2e | Hype: sound lookup", {
+                trackId: hypeTrack,
+                foundSound: !!hypeTrackSound,
+                playlistId: this.playlist.id,
+                playlistName: this.playlist.name,
+                soundsCount: this.playlist.sounds?.size ?? this.playlist.sounds?.contents?.length
+            });
+        }
+
         if (game.user.isGM) {
+            if (debugLogging) {
+                console.log("Maestro_pf2e | Hype: calling playHype...");
+            }
             await this.playHype(combatant.actor, {warn: false});
+            if (debugLogging) {
+                console.log("Maestro_pf2e | Hype: playHype completed");
+            }
         }
         
         const soundInstance = hypeTrackSound?.sound;
@@ -157,12 +205,17 @@ export default class HypeTrack {
                 this.pausedSounds = [];
             }
             if (debugLogging) {
-                console.debug("Maestro_pf2e | Hype skip: sound instance missing", {
+                console.log("Maestro_pf2e | Hype skip: sound instance missing", {
                     trackId: hypeTrack,
-                    actorId: combatant.actor.id
+                    actorId: combatant.actor.id,
+                    hasHypeTrackSound: !!hypeTrackSound
                 });
             }
             return;
+        }
+        
+        if (debugLogging) {
+            console.log("Maestro_pf2e | Hype: sound instance found, setting up resume callback");
         }
 
         if (!this.pausedSounds.length) {
