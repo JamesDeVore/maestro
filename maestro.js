@@ -262,9 +262,24 @@ export default class Conductor {
      * Render Actor SheetsHook
      */
     static _hookOnRenderActorSheet() {
-        Hooks.on("renderActorSheet", (app, html, data) => {
-            game.maestro.hypeTrack._addHypeButton(app, html, data);
-        });
+        const hookNames = [
+            "renderActorSheet",
+            "renderCharacterSheetPF2e",
+            "renderNPCSheetPF2e",
+            "renderCreatureSheetPF2e",
+            "renderFamiliarSheetPF2e",
+            "renderHazardSheetPF2e",
+            "renderLootSheetPF2e",
+            "renderPartySheetPF2e",
+            "renderVehicleSheetPF2e",
+            "renderArmySheetPF2e"
+        ];
+
+        for (const hookName of hookNames) {
+            Hooks.on(hookName, (app, html, data) => {
+                game.maestro.hypeTrack._addHypeButton(app, html, data);
+            });
+        }
        
     }
 

@@ -171,20 +171,26 @@ export default class HypeTrack {
             </a>`
         );
         
-        if (html.find(`.${MAESTRO.DEFAULT_CONFIG.HypeTrack.name}`).length > 0) {
+        const $html = html instanceof HTMLElement ? $(html) : html;
+
+        if ($html.find(`.${MAESTRO.DEFAULT_CONFIG.HypeTrack.name}`).length > 0) {
             return;
         }
 
         /**
          * Finds the header and the close button
          */
-        const windowHeader = html.find(".window-header");
-        const windowCloseBtn = windowHeader.find(".close");
+        const windowHeader = $html.find(".window-header");
+        const windowCloseBtn = windowHeader.find(".close, .header-button.close");
     
         /**
          * Create an instance of the hypeButton before the close button
          */
-        windowCloseBtn.before(hypeButton);
+        if (windowCloseBtn.length) {
+            windowCloseBtn.first().before(hypeButton);
+        } else {
+            windowHeader.append(hypeButton);
+        }
     
         /**
          * Register a click listener that opens the Hype Track form
