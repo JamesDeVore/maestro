@@ -316,7 +316,7 @@ function playCriticalSuccessFailure(message) {
     return;
   }
 
-  const outcome = message?.flags?.pf2e?.context?.outcome;
+  const outcome = getPf2eOutcome(message);
   if (!outcome) {
     return;
   }
@@ -344,6 +344,27 @@ function playCriticalSuccessFailure(message) {
   if (outcome === "criticalFailure" && criticalFailurePlaylist && criticalFailureSound) {
     Playback.playTrack(criticalFailureSound, criticalFailurePlaylist);
   }
+}
+
+/**
+ * Resolve PF2e check outcome from chat message flags or roll data.
+ * @param {*} message
+ * @returns {string|null} criticalSuccess|criticalFailure|success|failure
+ */
+function getPf2eOutcome(message) {
+  const outcome = message?.flags?.pf2e?.context?.outcome;
+  if (outcome) {
+    return outcome;
+  }
+
+  const roll = message?.rolls?.[0];
+  const degree = roll?.degreeOfSuccess ?? roll?.options?.degreeOfSuccess ?? null;
+  if (degree === null || degree === undefined) {
+    return null;
+  }
+
+  const outcomes = ["criticalFailure", "failure", "success", "criticalSuccess"];
+  return outcomes[Number(degree)] ?? null;
 }
 
 /**
