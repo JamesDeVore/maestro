@@ -2,12 +2,16 @@ import * as MAESTRO from "./config.js";
 import * as Playback from "./playback.js";
 
 export function _onRenderPlaylistDirectory(app, html, data) {
-  _addPlaylistLoopToggle(html);
-  _addMaestroConfig(html);
+  // Convert html to jQuery if it's not already
+  const $html = html instanceof jQuery ? html : $(html);
+  _addPlaylistLoopToggle($html);
+  _addMaestroConfig($html);
 }
 
 function _addMaestroConfig(html) {
-  const createPlaylistButton = html.find("button.create-entity");
+  // Ensure html is a jQuery object
+  const $html = html instanceof jQuery ? html : $(html);
+  const createPlaylistButton = $html.find("button.create-entity");
 
   const footerFlexDivHtml = `<div class="flexrow"></div>`;
 
@@ -18,7 +22,7 @@ function _addMaestroConfig(html) {
   createPlaylistButton.wrap(footerFlexDivHtml);
   createPlaylistButton.after(maestroConfigButtonHtml);
 
-  const maestroConfigButton = html.find("button.maestro-config");
+  const maestroConfigButton = $html.find("button.maestro-config");
 
   maestroConfigButton.on("click", (event) => {
     event.preventDefault();
@@ -127,7 +131,9 @@ export class MaestroConfigForm extends FormApplication {
  * @param {*} html
  */
 function _addPlaylistLoopToggle(html) {
-  const playlistModeButtons = html.find('[data-action="playlist-mode"]');
+  // Ensure html is a jQuery object
+  const $html = html instanceof jQuery ? html : $(html);
+  const playlistModeButtons = $html.find('[data-action="playlist-mode"]');
   const loopToggleHtml = `<a class="sound-control" data-action="playlist-loop" title="${game.i18n.localize(
     "PLAYLIST-LOOP.ButtonTooltipLoop"
   )}">
@@ -136,7 +142,7 @@ function _addPlaylistLoopToggle(html) {
 
   playlistModeButtons.after(loopToggleHtml);
 
-  const loopToggleButtons = html.find('[data-action="playlist-loop"]');
+  const loopToggleButtons = $html.find('[data-action="playlist-loop"]');
 
   if (loopToggleButtons.length === 0) {
     return;

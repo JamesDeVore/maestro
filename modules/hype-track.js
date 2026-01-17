@@ -171,7 +171,9 @@ export default class HypeTrack {
 
         if (pauseOthers) {
             // pause active playlists
-            this.pausedSounds = Playback.pauseAll();
+            this.pausedSounds = Playback.pauseAll() || [];
+        } else {
+            this.pausedSounds = [];
         }
         
 
@@ -215,10 +217,16 @@ export default class HypeTrack {
         }
         
         if (debugLogging) {
-            console.log("Maestro_pf2e | Hype: sound instance found, setting up resume callback");
+            console.log("Maestro_pf2e | Hype: sound instance found, setting up resume callback", {
+                pausedSoundsLength: this.pausedSounds?.length ?? 0,
+                pauseOthers: pauseOthers
+            });
         }
 
-        if (!this.pausedSounds.length) {
+        if (!this.pausedSounds || !this.pausedSounds.length) {
+            if (debugLogging) {
+                console.log("Maestro_pf2e | Hype: no paused sounds to resume, track should be playing");
+            }
             return;
         }
 
