@@ -51,6 +51,11 @@ export default class HypeTrack {
             return;
         }
 
+        const debugLogging = game.settings.get(
+            MAESTRO.MODULE_NAME,
+            MAESTRO.SETTINGS_KEYS.Misc.debugLogging
+        );
+
         // Stop any active hype tracks
         if (game.user.isGM && this?.playlist?.playing) {
             this.playlist.stopAll();
@@ -67,6 +72,12 @@ export default class HypeTrack {
                 this.pausedSounds = [];
             }
             
+            if (debugLogging) {
+                console.debug("Maestro_pf2e | Hype skip: no track", {
+                    actorId: combatant.actor.id,
+                    actorName: combatant.actor.name
+                });
+            }
             return;
         }
 
@@ -89,6 +100,12 @@ export default class HypeTrack {
                 Playback.resumeSounds(this.pausedSounds);
                 this.pausedSounds = [];
             }
+            if (debugLogging) {
+                console.debug("Maestro_pf2e | Hype skip: sound instance missing", {
+                    trackId: hypeTrack,
+                    actorId: combatant.actor.id
+                });
+            }
             return;
         }
 
@@ -106,6 +123,15 @@ export default class HypeTrack {
             soundInstance.on("end", () => {
                 Playback.resumeSounds(this.pausedSounds);
                 this.pausedSounds = [];
+            });
+        }
+
+        if (debugLogging) {
+            console.debug("Maestro_pf2e | Hype track started", {
+                actorId: combatant.actor.id,
+                actorName: combatant.actor.name,
+                trackId: hypeTrack,
+                playlistId: this.playlist?.id
             });
         }
     }
@@ -150,13 +176,26 @@ export default class HypeTrack {
      */
     async _addHypeButton (app, html, data) {
         const actor = app.actor ?? app.object ?? app.document ?? app.entity;
+        const debugLogging = game.settings.get(
+            MAESTRO.MODULE_NAME,
+            MAESTRO.SETTINGS_KEYS.Misc.debugLogging
+        );
         if(!game.user.isGM && !actor?.isOwner) {
+            if (debugLogging) {
+                console.debug("Maestro_pf2e | Hype button skip: no permission", {
+                    actorId: actor?.id,
+                    actorName: actor?.name
+                });
+            }
             return;
         }
 
         const enabled = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.HypeTrack.enable);
 
         if (!enabled) {
+            if (debugLogging) {
+                console.debug("Maestro_pf2e | Hype button skip: disabled");
+            }
             return;
         }
 
@@ -174,6 +213,9 @@ export default class HypeTrack {
         const $html = html instanceof HTMLElement ? $(html) : html;
 
         if ($html.find(`.${MAESTRO.DEFAULT_CONFIG.HypeTrack.name}`).length > 0) {
+            if (debugLogging) {
+                console.debug("Maestro_pf2e | Hype button exists, skipping");
+            }
             return;
         }
 
@@ -190,6 +232,13 @@ export default class HypeTrack {
             windowCloseBtn.first().before(hypeButton);
         } else {
             windowHeader.append(hypeButton);
+        }
+
+        if (debugLogging) {
+            console.debug("Maestro_pf2e | Hype button added", {
+                actorId: actor?.id,
+                actorName: actor?.name
+            });
         }
     
         /**

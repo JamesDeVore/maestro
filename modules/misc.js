@@ -295,9 +295,15 @@ export function _onRenderChatMessage(message, html, data) {
     MAESTRO.MODULE_NAME,
     MAESTRO.SETTINGS_KEYS.Misc.enableCriticalSuccessFailureTracks
   );
+  const debugLogging = game.settings.get(
+    MAESTRO.MODULE_NAME,
+    MAESTRO.SETTINGS_KEYS.Misc.debugLogging
+  );
 
   if (enableCriticalSuccessFailureTracks) {
     playCriticalSuccessFailure(message);
+  } else if (debugLogging) {
+    console.debug("Maestro_pf2e | Crit tracks disabled; message id", message?.id);
   }
 }
 
@@ -306,6 +312,10 @@ export function _onRenderChatMessage(message, html, data) {
  * @param {*} message
  */
 function playCriticalSuccessFailure(message) {
+  const debugLogging = game.settings.get(
+    MAESTRO.MODULE_NAME,
+    MAESTRO.SETTINGS_KEYS.Misc.debugLogging
+  );
   if (
     !game.user.isGM ||
     !message.isContentVisible
@@ -313,11 +323,21 @@ function playCriticalSuccessFailure(message) {
     return;
 
   if (game.system.id !== "pf2e") {
+    if (debugLogging) {
+      console.debug("Maestro_pf2e | Crit skip: non-pf2e system", game.system.id);
+    }
     return;
   }
 
   const outcome = getPf2eOutcome(message);
   if (!outcome) {
+    if (debugLogging) {
+      console.debug("Maestro_pf2e | Crit skip: no outcome", {
+        id: message?.id,
+        flags: message?.flags?.pf2e,
+        roll0: message?.rolls?.[0]
+      });
+    }
     return;
   }
 
@@ -338,11 +358,25 @@ function playCriticalSuccessFailure(message) {
   // Play relevant sound for successes and failures
   if (outcome === "criticalSuccess" && criticalSuccessPlaylist && criticalSuccessSound) {
     Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist);
+    if (debugLogging) {
+      console.debug("Maestro_pf2e | Crit success sound", {
+        outcome,
+        playlistId: criticalSuccessPlaylist,
+        soundId: criticalSuccessSound
+      });
+    }
     return;
   }
 
   if (outcome === "criticalFailure" && criticalFailurePlaylist && criticalFailureSound) {
     Playback.playTrack(criticalFailureSound, criticalFailurePlaylist);
+    if (debugLogging) {
+      console.debug("Maestro_pf2e | Crit failure sound", {
+        outcome,
+        playlistId: criticalFailurePlaylist,
+        soundId: criticalFailureSound
+      });
+    }
   }
 }
 

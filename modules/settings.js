@@ -180,8 +180,8 @@ export const registerModuleSettings = async function() {
     /* -------------------------------------------- */
 
     game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.disableDiceSound, {
-        name: "MAESTRO.SETTINGS.DisableDiceSoundN",
-        hint: "MAESTRO.SETTINGS.DisableDiceSoundH",
+        name: "SETTINGS.DisableDiceSoundN",
+        hint: "SETTINGS.DisableDiceSoundH",
         scope: "world",
         type: Boolean,
         default: false,
@@ -191,9 +191,19 @@ export const registerModuleSettings = async function() {
         }
     }),
 
+    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.debugLogging, {
+        name: "SETTINGS.DebugLoggingN",
+        hint: "SETTINGS.DebugLoggingH",
+        scope: "world",
+        type: Boolean,
+        default: false,
+        config: true,
+        onChange: s => {}
+    }),
+
     game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.enableCriticalSuccessFailureTracks, {
-        name: "MAESTRO.SETTINGS.EnableCriticalSuccessFailureTracksN",
-        hint: "MAESTRO.SETTINGS.EnableCriticalSuccessFailureTracksH",
+        name: "SETTINGS.EnableCriticalSuccessFailureTracksN",
+        hint: "SETTINGS.EnableCriticalSuccessFailureTracksH",
         scope: "world",
         type: Boolean,
         default: false,
@@ -204,8 +214,8 @@ export const registerModuleSettings = async function() {
     }),
 
     game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.createCriticalSuccessPlaylist, {
-        name: "MAESTRO.SETTINGS.CreateCriticalSuccessPlaylistN",
-        hint: "MAESTRO.SETTINGS.CreateCriticalSuccessPlaylistH",
+        name: "SETTINGS.CreateCriticalSuccessPlaylistN",
+        hint: "SETTINGS.CreateCriticalSuccessPlaylistH",
         scope: "world",
         type: Boolean,
         default: false,
@@ -220,8 +230,8 @@ export const registerModuleSettings = async function() {
     }),
 
     game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.createCriticalFailurePlaylist, {
-        name: "MAESTRO.SETTINGS.CreateCriticalFailurePlaylistN",
-        hint: "MAESTRO.SETTINGS.CreateCriticalFailurePlaylistH",
+        name: "SETTINGS.CreateCriticalFailurePlaylistN",
+        hint: "SETTINGS.CreateCriticalFailurePlaylistH",
         scope: "world",
         type: Boolean,
         default: false,
@@ -236,8 +246,8 @@ export const registerModuleSettings = async function() {
     }),
 
     game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks, {
-        name: "MAESTRO.SETTINGS.CriticalSuccessFailureTracksN",
-        hint: "MAESTRO.SETTINGS.CriticalSuccessFailureTracksH",
+        name: "SETTINGS.CriticalSuccessFailureTracksN",
+        hint: "SETTINGS.CriticalSuccessFailureTracksH",
         scope: "world",
         type: Object,
         default: {

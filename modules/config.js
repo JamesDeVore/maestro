@@ -142,6 +142,7 @@ export const SETTINGS_KEYS = {
     get Misc() {
         return {
             disableDiceSound: "disableDiceSound",
+            debugLogging: "debugLogging",
             enableCriticalSuccessFailureTracks: "enableCriticalSuccessFailureTracks",
             createCriticalSuccessPlaylist: "createCriticalSuccessPlaylist",
             criticalSuccessFailureTracks: "criticalSuccessFailureTracks",

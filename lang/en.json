@@ -28,6 +28,8 @@
         "SETTINGS.MigrationCurrentVersionH": "Holds the version of Maestro that was last migrated",
         "SETTINGS.DisableDiceSoundN": "Disable Dice Sounds",
         "SETTINGS.DisableDiceSoundH": "Disables the default Dice Sounds on roll",
+        "SETTINGS.DebugLoggingN": "Enable Debug Logging",
+        "SETTINGS.DebugLoggingH": "Log Hype/Crit diagnostics to the console for troubleshooting",
         "SETTINGS.EnableCriticalSuccessFailureTracksN": "Enable Critical Success/Failure Tracks",
         "SETTINGS.EnableCriticalSuccessFailureTracksH": "Plays a sound when a critical success/failure is rolled (not supported in all systems)",
         "SETTINGS.CreateCriticalSuccessPlaylistN": "Create Critical Success Tracks Playlist",
