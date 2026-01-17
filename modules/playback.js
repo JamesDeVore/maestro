@@ -30,10 +30,12 @@ export function getPlaylistSound(trackId) {
 
 /**
  * Play a playlist sound based on the given trackId
- * @param {String} playlistId - the playlist id
  * @param {String} trackId - the track Id or playback mode
+ * @param {String} playlistId - the playlist id
+ * @param {Object} [options]
+ * @param {boolean} [options.repeat] - override sound repeat behavior
  */
-export async function playTrack(trackId, playlistId) {
+export async function playTrack(trackId, playlistId, {repeat} = {}) {
     if (!playlistId) {
         return;
     }
@@ -55,6 +57,10 @@ export async function playTrack(trackId, playlistId) {
     const sound = playlist.sounds?.get(trackId) ?? playlist.sounds?.contents?.find(s => s.id === trackId || s._id === trackId);
     if (!sound) {
         return;
+    }
+
+    if (repeat === false && sound.repeat) {
+        await sound.update({repeat: false});
     }
 
     return await playlist.playSound(sound);

@@ -365,7 +365,7 @@ function playCriticalSuccessFailure(message) {
 
   // Play relevant sound for successes and failures
   if (outcome === "criticalSuccess" && criticalSuccessPlaylist && criticalSuccessSound) {
-    Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist);
+    Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist, {repeat: false});
     if (debugLogging) {
       console.debug("Maestro_pf2e | Crit success sound", {
         outcome,
@@ -377,7 +377,7 @@ function playCriticalSuccessFailure(message) {
   }
 
   if (outcome === "criticalFailure" && criticalFailurePlaylist && criticalFailureSound) {
-    Playback.playTrack(criticalFailureSound, criticalFailurePlaylist);
+    Playback.playTrack(criticalFailureSound, criticalFailurePlaylist, {repeat: false});
     if (debugLogging) {
       console.debug("Maestro_pf2e | Crit failure sound", {
         outcome,
