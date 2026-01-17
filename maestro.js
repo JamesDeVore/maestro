@@ -181,6 +181,11 @@ export default class Conductor {
      * Ready Hook Registrations
      */
     static _readyHookRegistrations() {
+        const debug = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.debugLogging);
+        if (debug) {
+            console.log("Maestro_pf2e | Registering hooks...");
+        }
+        
         // Sheet/App Render Hooks
         Conductor._hookOnRenderActorSheet();
         Conductor._hookOnRenderItemSheet();
@@ -201,7 +206,9 @@ export default class Conductor {
         // Delete hooks
         Conductor._hookOnDeleteCombat();
         
-        
+        if (debug) {
+            console.log("Maestro_pf2e | Hooks registered successfully");
+        }
     }
 
     /**
@@ -244,8 +251,21 @@ export default class Conductor {
      */
     static _hookOnUpdateCombat() {
         Hooks.on("updateCombat", (combat, update, options, userId) => {
+            const debug = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.debugLogging);
+            if (debug) {
+                console.log("Maestro_pf2e | updateCombat hook fired", { 
+                    turn: update.turn, 
+                    round: update.round, 
+                    combatant: combat.combatant?.actor?.name,
+                    hasHypeTrack: !!game.maestro.hypeTrack 
+                });
+            }
             //game.maestro.combatTrack._checkCombatTrack(combat, update);
-            game.maestro.hypeTrack._processHype(combat, update);
+            if (game.maestro.hypeTrack) {
+                game.maestro.hypeTrack._processHype(combat, update);
+            } else if (debug) {
+                console.warn("Maestro_pf2e | updateCombat: hypeTrack not initialized");
+            }
         });
     }
 

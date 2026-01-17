@@ -58,6 +58,14 @@ export default class HypeTrack {
             MAESTRO.MODULE_NAME,
             MAESTRO.SETTINGS_KEYS.Misc.debugLogging
         );
+        if (debugLogging) {
+            console.log("Maestro_pf2e | _processHype called", { 
+                turn: update.turn, 
+                round: update.round,
+                combatId: combat.id,
+                combatants: combat.combatants.length
+            });
+        }
         const enabled = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.HypeTrack.enable);
         const turnChanged = typeof update.turn === "number";
         const roundChanged = typeof update.round === "number";
