@@ -180,6 +180,11 @@ export default class HypeTrack {
             MAESTRO.MODULE_NAME,
             MAESTRO.SETTINGS_KEYS.Misc.debugLogging
         );
+        if (debugLogging && !actor) {
+            console.debug("Maestro_pf2e | Hype button skip: no actor on app", {
+                appName: app?.constructor?.name
+            });
+        }
         if(!game.user.isGM && !actor?.isOwner) {
             if (debugLogging) {
                 console.debug("Maestro_pf2e | Hype button skip: no permission", {

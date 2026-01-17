@@ -316,11 +316,19 @@ function playCriticalSuccessFailure(message) {
     MAESTRO.MODULE_NAME,
     MAESTRO.SETTINGS_KEYS.Misc.debugLogging
   );
-  if (
-    !game.user.isGM ||
-    !message.isContentVisible
-  )
+  if (!message.isContentVisible) {
+    if (debugLogging) {
+      console.debug("Maestro_pf2e | Crit skip: message not visible", message?.id);
+    }
     return;
+  }
+
+  if (!game.user.isGM) {
+    if (debugLogging) {
+      console.debug("Maestro_pf2e | Crit skip: user not GM");
+    }
+    return;
+  }
 
   if (game.system.id !== "pf2e") {
     if (debugLogging) {

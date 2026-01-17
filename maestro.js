@@ -277,6 +277,17 @@ export default class Conductor {
 
         for (const hookName of hookNames) {
             Hooks.on(hookName, (app, html, data) => {
+                const debugLogging = game.settings.get(
+                    MAESTRO.MODULE_NAME,
+                    MAESTRO.SETTINGS_KEYS.Misc.debugLogging
+                );
+                if (debugLogging) {
+                    console.debug("Maestro_pf2e | render hook", {
+                        hookName,
+                        appName: app?.constructor?.name,
+                        actorId: app?.actor?.id ?? app?.object?.id ?? app?.document?.id ?? app?.entity?.id
+                    });
+                }
                 game.maestro.hypeTrack._addHypeButton(app, html, data);
             });
         }
