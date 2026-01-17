@@ -22,6 +22,18 @@ export default class HypeTrack {
         } else {
             this.playlist = hypePlaylist || null;
         }
+
+        const debugLogging = game.settings.get(
+            MAESTRO.MODULE_NAME,
+            MAESTRO.SETTINGS_KEYS.Misc.debugLogging
+        );
+        if (debugLogging) {
+            console.debug("Maestro_pf2e | Hype playlist check", {
+                enabled,
+                playlistId: this.playlist?.id ?? null,
+                playlistName: this.playlist?.name ?? null
+            });
+        }
     }
 
     /**
@@ -42,19 +54,55 @@ export default class HypeTrack {
      * @param {*} update - the update data
      */
     async _processHype(combat, update) {
-        if (typeof update.turn !== "number" || !combat.combatants.length || !this.playlist) {
-            return;
-        }
-
-        const combatant = combat.combatant ?? combat.combatants.get(combat.turn);
-        if (!combatant?.actor) {
-            return;
-        }
-
         const debugLogging = game.settings.get(
             MAESTRO.MODULE_NAME,
             MAESTRO.SETTINGS_KEYS.Misc.debugLogging
         );
+        const enabled = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.HypeTrack.enable);
+        const turnChanged = typeof update.turn === "number";
+        const roundChanged = typeof update.round === "number";
+
+        if (!enabled) {
+            if (debugLogging) {
+                console.debug("Maestro_pf2e | Hype skip: disabled");
+            }
+            return;
+        }
+
+        if (!turnChanged && !roundChanged) {
+            if (debugLogging) {
+                console.debug("Maestro_pf2e | Hype skip: no turn/round change", update);
+            }
+            return;
+        }
+
+        if (!combat.combatants.length) {
+            if (debugLogging) {
+                console.debug("Maestro_pf2e | Hype skip: no combatants");
+            }
+            return;
+        }
+
+        if (!this.playlist) {
+            await this._checkForHypeTracksPlaylist();
+            if (!this.playlist) {
+                if (debugLogging) {
+                    console.debug("Maestro_pf2e | Hype skip: no playlist");
+                }
+                return;
+            }
+        }
+
+        const combatant = combat.combatant ?? combat.combatants.get(combat.turn);
+        if (!combatant?.actor) {
+            if (debugLogging) {
+                console.debug("Maestro_pf2e | Hype skip: no combatant actor", {
+                    combatId: combat?.id,
+                    turn: combat?.turn
+                });
+            }
+            return;
+        }
 
         // Stop any active hype tracks
         if (game.user.isGM && this?.playlist?.playing) {
@@ -280,6 +328,11 @@ export default class HypeTrack {
             actor = game.actors.getName(actor.name) || null;
         }
 
+        const debugLogging = game.settings.get(
+            MAESTRO.MODULE_NAME,
+            MAESTRO.SETTINGS_KEYS.Misc.debugLogging
+        );
+
         if (!actor) {
             if (warn) ui.notifications.warn(game.i18n.localize("HYPE-TRACK.PlayHype.NoActor"));
             return;
@@ -309,6 +362,16 @@ export default class HypeTrack {
         }
 
         const playedTrack = await Playback.playTrack(hypeTrack, playlist.id);
+
+        if (debugLogging) {
+            console.debug("Maestro_pf2e | Hype playHype", {
+                actorId: actor?.id,
+                actorName: actor?.name,
+                playlistId: playlist?.id,
+                trackId: hypeTrack,
+                playedTrackId: playedTrack?._id ?? playedTrack?.id
+            });
+        }
 
         if (pauseOthers && pausedSounds.length) {
             const playlistSound = playlist.sounds?.get(playedTrack._id) ?? playlist.sounds?.contents?.find(s => s._id === playedTrack._id);
