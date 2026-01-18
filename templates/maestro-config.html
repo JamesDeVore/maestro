@@ -4,7 +4,7 @@
     <div class="form-group">
         <label>{{localize "MAESTRO.MAESTRO-CONFIG.CriticalSuccessPlaylist"}}</label>
         <select name="critical-success-playlist" class="playlist-select" title="{{localize "MAESTRO.FORM.PlaylistSelection"}}" default="">
-            {{selectOptions playlists selected=criticalSuccessPlaylist nameAttr="id" labelAttr="name" blank=(localize "MAESTRO.FORM.SelectNone")}}
+            {{selectOptions playlists selected=criticalSuccessPlaylist blank=(localize "MAESTRO.FORM.SelectNone")}}
         </select>
         <p class="notes">{{localize "MAESTRO.MAESTRO-CONFIG.Critical.FormPlaylistNotes"}}</p> 
     </div>
@@ -17,7 +17,7 @@
             <option value="random-track">{{localize "MAESTRO.FORM.PlayRandom"}}</option>
             <option value="play-all">{{localize "MAESTRO.FORM.PlayAll"}}</option>
             {{/if}}
-            {{selectOptions criticalSuccessPlaylistSounds selected=criticalSuccessSound nameAttr="id" labelAttr="name"}}
+            {{selectOptions criticalSuccessPlaylistSounds selected=criticalSuccessSound}}
         </select>
         <p class="notes">{{localize "MAESTRO.MAESTRO-CONFIG.Critical.FormSoundNotes"}}</p> 
     </div>
@@ -25,7 +25,7 @@
     <div class="form-group">
         <label>{{localize "MAESTRO.MAESTRO-CONFIG.CriticalFailurePlaylist"}}</label>
         <select name="critical-failure-playlist" class="playlist-select" title="{{localize "MAESTRO.FORM.PlaylistSelection"}}" default="">
-            {{selectOptions playlists selected=criticalFailurePlaylist nameAttr="id" labelAttr="name" blank=(localize "MAESTRO.FORM.SelectNone")}}
+            {{selectOptions playlists selected=criticalFailurePlaylist blank=(localize "MAESTRO.FORM.SelectNone")}}
         </select>
         <p class="notes">{{localize "MAESTRO.MAESTRO-CONFIG.Failure.FormPlaylistNotes"}}</p> 
     </div>
@@ -38,7 +38,7 @@
             <option value="random-track">{{localize "MAESTRO.FORM.PlayRandom"}}</option>
             <option value="play-all">{{localize "MAESTRO.FORM.PlayAll"}}</option>
             {{/if}}
-            {{selectOptions criticalFailurePlaylistSounds selected=criticalFailureSound nameAttr="id" labelAttr="name"}}
+            {{selectOptions criticalFailurePlaylistSounds selected=criticalFailureSound}}
         </select>
         <p class="notes">{{localize "MAESTRO.MAESTRO-CONFIG.Failure.FormSoundNotes"}}</p> 
     </div>

@@ -490,10 +490,14 @@ class HypeTrackActorForm extends FormApplication {
         const playlist = this.data.playlist || game.playlists.contents.find(p => p.name === MAESTRO.DEFAULT_CONFIG.HypeTrack.playlistName) || null;
         const playlistSounds = playlist?.sounds?.contents ?? [];
         
+        // Format for selectOptions: array of {value, label} objects
+        const playlists = game.playlists.contents.map(p => ({ value: p.id, label: p.name }));
+        const sounds = playlistSounds.map(s => ({ value: s.id ?? s._id, label: s.name }));
+        
         return {
             playlist: playlist?.id ?? "",
-            playlists: game.playlists.contents,
-            playlistSounds: playlistSounds.map(s => ({ id: s.id ?? s._id, name: s.name })),
+            playlists: playlists,
+            playlistSounds: sounds,
             track: this.data.track
         }
     }
@@ -550,7 +554,8 @@ class HypeTrackActorForm extends FormApplication {
                 options += `<option value="play-all">${game.i18n.localize("MAESTRO.FORM.PlayAll")}</option>`;
                 sounds.forEach(sound => {
                     const id = sound.id ?? sound._id;
-                    options += `<option value="${id}">${sound.name}</option>`;
+                    const name = sound.name;
+                    options += `<option value="${id}">${name}</option>`;
                 });
             }
             
