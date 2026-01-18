@@ -2,7 +2,12 @@
     <div class="form-group">
         <label>{{localize "MAESTRO.HYPE-TRACK.Form.PlaylistLabel"}}</label>
         <select name="playlist" class="playlist-select" title="{{localize "MAESTRO.FORM.PlaylistSelection"}}" default="">
-            {{selectOptions playlists selected=playlist blank=(localize "MAESTRO.FORM.SelectNone")}}
+            {{#select playlist}}
+            <option value="">{{localize "MAESTRO.FORM.SelectNone"}}</option>
+            {{#each playlists}}
+            <option value="{{this.value}}">{{this.label}}</option>
+            {{/each}}
+            {{/select}}
         </select>
         <p class="notes">{{localize "MAESTRO.HYPE-TRACK.FormPlaylistNotes"}}</p> 
     </div>
@@ -15,7 +20,11 @@
             <option value="random-track">{{localize "MAESTRO.FORM.PlayRandom"}}</option>
             <option value="play-all">{{localize "MAESTRO.FORM.PlayAll"}}</option>
             {{/if}}
-            {{selectOptions playlistSounds selected=track}}
+            {{#select track}}
+            {{#each playlistSounds}}
+            <option value="{{this.value}}">{{this.label}}</option>
+            {{/each}}
+            {{/select}}
         </select>
         <p class="notes">{{localize "MAESTRO.HYPE-TRACK.FormTrackNotes"}}</p> 
     </div>

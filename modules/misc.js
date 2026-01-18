@@ -67,13 +67,13 @@ export class MaestroConfigForm extends FormApplication {
       this.data = criticalSuccessFailureTracks;
     }
 
-    // Format playlists for selectOptions: array of {value, label} objects
-    const playlists = game.playlists.contents.map(p => ({ value: p.id, label: p.name }));
+    // Format playlists as simple array for template iteration
+    const playlists = game.playlists.contents.map(p => ({ id: p.id, name: p.name }));
     const criticalSuccessSounds = this.data.criticalSuccessPlaylist
-      ? Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist).map(s => ({ value: s.id ?? s._id, label: s.name }))
+      ? Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist).map(s => ({ id: s.id ?? s._id, name: s.name }))
       : [];
     const criticalFailureSounds = this.data.criticalFailurePlaylist
-      ? Playback.getPlaylistSounds(this.data.criticalFailurePlaylist).map(s => ({ value: s.id ?? s._id, label: s.name }))
+      ? Playback.getPlaylistSounds(this.data.criticalFailurePlaylist).map(s => ({ id: s.id ?? s._id, name: s.name }))
       : [];
 
     return {

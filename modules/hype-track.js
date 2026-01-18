@@ -490,7 +490,7 @@ class HypeTrackActorForm extends FormApplication {
         const playlist = this.data.playlist || game.playlists.contents.find(p => p.name === MAESTRO.DEFAULT_CONFIG.HypeTrack.playlistName) || null;
         const playlistSounds = playlist?.sounds?.contents ?? [];
         
-        // Format for selectOptions: array of {value, label} objects
+        // Format for template: array of {value, label} objects for {{#select}}
         const playlists = game.playlists.contents.map(p => ({ value: p.id, label: p.name }));
         const sounds = playlistSounds.map(s => ({ value: s.id ?? s._id, label: s.name }));
         
