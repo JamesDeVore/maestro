@@ -487,8 +487,13 @@ class HypeTrackActorForm extends FormApplication {
      * Provide data to the handlebars template
      */
     async getData() {
+        const playlist = this.data.playlist || game.playlists.contents.find(p => p.name === MAESTRO.DEFAULT_CONFIG.HypeTrack.playlistName) || null;
+        const playlistSounds = playlist?.sounds?.contents ?? [];
+        
         return {
-            playlistTracks: this.data.playlist.sounds?.contents ?? [],
+            playlist: playlist?.id ?? "",
+            playlists: game.playlists.contents,
+            playlistSounds: playlistSounds.map(s => ({ id: s.id ?? s._id, name: s.name })),
             track: this.data.track
         }
     }
@@ -500,6 +505,56 @@ class HypeTrackActorForm extends FormApplication {
      * @param {Object} formData - the form data
      */
     async _updateObject(event, formData) {
-        await game.maestro.hypeTrack._setActorHypeTrack(this.actor, formData.track);  
+        const debugLogging = game.settings.get(
+            MAESTRO.MODULE_NAME,
+            MAESTRO.SETTINGS_KEYS.Misc.debugLogging
+        );
+        
+        if (debugLogging) {
+            console.log("Maestro_pf2e | Hype form submit", {
+                actorId: this.actor?.id,
+                track: formData.track,
+                playlist: formData.playlist
+            });
+        }
+        
+        // If playlist changed, we might need to update the track
+        const track = formData.track || null;
+        await game.maestro.hypeTrack._setActorHypeTrack(this.actor, track);
+    }
+    
+    /**
+     * Activate listeners for dynamic playlist/track selection
+     */
+    activateListeners(html) {
+        super.activateListeners(html);
+        const $html = html instanceof jQuery ? html : $(html);
+        
+        // Update track options when playlist changes
+        $html.find("select[name='playlist']").on("change", async (event) => {
+            const playlistId = event.target.value;
+            if (!playlistId) {
+                $html.find("select[name='track']").html(`<option value="">${game.i18n.localize("MAESTRO.HYPE-TRACK.FormSelectNone")}</option>`);
+                return;
+            }
+            
+            const playlist = game.playlists.get(playlistId);
+            if (!playlist) return;
+            
+            const sounds = playlist.sounds?.contents ?? [];
+            const trackSelect = $html.find("select[name='track']");
+            let options = `<option value="">${game.i18n.localize("MAESTRO.HYPE-TRACK.FormSelectNone")}</option>`;
+            
+            if (sounds.length > 0) {
+                options += `<option value="random-track">${game.i18n.localize("MAESTRO.FORM.PlayRandom")}</option>`;
+                options += `<option value="play-all">${game.i18n.localize("MAESTRO.FORM.PlayAll")}</option>`;
+                sounds.forEach(sound => {
+                    const id = sound.id ?? sound._id;
+                    options += `<option value="${id}">${sound.name}</option>`;
+                });
+            }
+            
+            trackSelect.html(options);
+        });
     }
 }

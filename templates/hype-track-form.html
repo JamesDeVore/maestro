@@ -1,13 +1,8 @@
 <form autocomplete="off" onsubmit="event.preventDefault();">
     <div class="form-group">
         <label>{{localize "MAESTRO.HYPE-TRACK.Form.PlaylistLabel"}}</label>
-        <select name="playlist" class="playlist-select" title="{{localize "FORM.PlaylistSelection"}}" default="">
-            {{#select playlist}}
-                <option value="">{{localize "MAESTRO.FORM.SelectNone"}}</option>
-                {{#each playlists}}
-                <option value="{{this.id}}">{{this.name}}</option>
-                {{/each}}
-            {{/select}}
+        <select name="playlist" class="playlist-select" title="{{localize "MAESTRO.FORM.PlaylistSelection"}}" default="">
+            {{selectOptions playlists selected=playlist nameAttr="id" labelAttr="name" blank=(localize "MAESTRO.FORM.SelectNone")}}
         </select>
         <p class="notes">{{localize "MAESTRO.HYPE-TRACK.FormPlaylistNotes"}}</p> 
     </div>
@@ -15,16 +10,12 @@
     <div class="form-group">
         <label>{{localize "MAESTRO.HYPE-TRACK.Form.TrackLabel"}}</label>
         <select name="track" class="track-select" title="{{localize "MAESTRO.HYPE-TRACK.FormTrackSelection"}}">
-            {{#select track}}
-                <option value="">{{localize "MAESTRO.HYPE-TRACK.FormSelectNone"}}</option>
-                {{#if playlistSounds}}
-                <option value="random-track">{{localize "MAESTRO.FORM.PlayRandom"}}</option>
-                <option value="play-all">{{localize "MAESTRO.FORM.PlayAll"}}</option>
-                {{/if}}
-                {{#each playlistSounds}}
-                <option value="{{this.id}}">{{this.name}}</option>
-                {{/each}}
-            {{/select}}
+            <option value="">{{localize "MAESTRO.HYPE-TRACK.FormSelectNone"}}</option>
+            {{#if playlistSounds}}
+            <option value="random-track">{{localize "MAESTRO.FORM.PlayRandom"}}</option>
+            <option value="play-all">{{localize "MAESTRO.FORM.PlayAll"}}</option>
+            {{/if}}
+            {{selectOptions playlistSounds selected=track nameAttr="id" labelAttr="name"}}
         </select>
         <p class="notes">{{localize "MAESTRO.HYPE-TRACK.FormTrackNotes"}}</p> 
     </div>

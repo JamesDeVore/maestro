@@ -67,17 +67,21 @@ export class MaestroConfigForm extends FormApplication {
       this.data = criticalSuccessFailureTracks;
     }
 
+    const playlists = game.playlists.contents.map(p => ({ id: p.id, name: p.name }));
+    const criticalSuccessSounds = this.data.criticalSuccessPlaylist
+      ? Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist).map(s => ({ id: s.id ?? s._id, name: s.name }))
+      : [];
+    const criticalFailureSounds = this.data.criticalFailurePlaylist
+      ? Playback.getPlaylistSounds(this.data.criticalFailurePlaylist).map(s => ({ id: s.id ?? s._id, name: s.name }))
+      : [];
+
     return {
-      playlists: game.playlists.contents,
+      playlists: playlists,
       criticalSuccessPlaylist: this.data.criticalSuccessPlaylist,
-      criticalSuccessPlaylistSounds: this.data.criticalSuccessPlaylist
-        ? Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist)
-        : null,
+      criticalSuccessPlaylistSounds: criticalSuccessSounds,
       criticalSuccessSound: this.data.criticalSuccessSound,
       criticalFailurePlaylist: this.data.criticalFailurePlaylist,
-      criticalFailurePlaylistSounds: this.data.criticalFailurePlaylist
-        ? Playback.getPlaylistSounds(this.data.criticalFailurePlaylist)
-        : null,
+      criticalFailurePlaylistSounds: criticalFailureSounds,
       criticalFailureSound: this.data.criticalFailureSound,
     };
   }
@@ -102,11 +106,12 @@ export class MaestroConfigForm extends FormApplication {
 
   activateListeners(html) {
     super.activateListeners(html);
+    const $html = html instanceof jQuery ? html : $(html);
 
-    const criticalPlaylistSelect = html.find(
+    const criticalPlaylistSelect = $html.find(
       "select[name='critical-success-playlist']"
     );
-    const failurePlaylistSelect = html.find(
+    const failurePlaylistSelect = $html.find(
       "select[name='critical-failure-playlist']"
     );
 
@@ -371,48 +376,85 @@ function playCriticalSuccessFailure(message) {
 
   // Play relevant sound for successes and failures
   if (outcome === "criticalSuccess" && criticalSuccessPlaylist && criticalSuccessSound) {
-    Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist, {repeat: false});
     if (debugLogging) {
-      console.debug("Maestro_pf2e | Crit success sound", {
+      console.log("Maestro_pf2e | Crit success sound", {
         outcome,
         playlistId: criticalSuccessPlaylist,
-        soundId: criticalSuccessSound
+        soundId: criticalSuccessSound,
+        isRandom: criticalSuccessSound === "random-track"
       });
     }
+    Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist, {repeat: false});
     return;
   }
 
   if (outcome === "criticalFailure" && criticalFailurePlaylist && criticalFailureSound) {
-    Playback.playTrack(criticalFailureSound, criticalFailurePlaylist, {repeat: false});
     if (debugLogging) {
-      console.debug("Maestro_pf2e | Crit failure sound", {
+      console.log("Maestro_pf2e | Crit failure sound", {
         outcome,
         playlistId: criticalFailurePlaylist,
-        soundId: criticalFailureSound
+        soundId: criticalFailureSound,
+        isRandom: criticalFailureSound === "random-track"
       });
     }
+    Playback.playTrack(criticalFailureSound, criticalFailurePlaylist, {repeat: false});
   }
 }
 
 /**
  * Resolve PF2e check outcome from chat message flags or roll data.
+ * Also checks for natural 20/1 on d20 rolls.
  * @param {*} message
  * @returns {string|null} criticalSuccess|criticalFailure|success|failure
  */
 function getPf2eOutcome(message) {
+  const debugLogging = game.settings.get(
+    MAESTRO.MODULE_NAME,
+    MAESTRO.SETTINGS_KEYS.Misc.debugLogging
+  );
+  
   const outcome = message?.flags?.pf2e?.context?.outcome;
   if (outcome) {
+    if (debugLogging && (outcome === "criticalSuccess" || outcome === "criticalFailure")) {
+      console.log("Maestro_pf2e | Crit outcome from flags", outcome);
+    }
     return outcome;
   }
 
   const roll = message?.rolls?.[0];
+  if (!roll) {
+    return null;
+  }
+
+  // Check for natural 20/1 on d20 dice
+  const d20Die = roll.dice?.find(d => d.faces === 20);
+  if (d20Die) {
+    const naturalRoll = d20Die.results?.find(r => r.active && !r.discarded)?.result ?? d20Die.total;
+    if (naturalRoll === 20) {
+      if (debugLogging) {
+        console.log("Maestro_pf2e | Natural 20 detected");
+      }
+      return "criticalSuccess";
+    }
+    if (naturalRoll === 1) {
+      if (debugLogging) {
+        console.log("Maestro_pf2e | Natural 1 detected");
+      }
+      return "criticalFailure";
+    }
+  }
+
   const degree = roll?.degreeOfSuccess ?? roll?.options?.degreeOfSuccess ?? null;
   if (degree === null || degree === undefined) {
     return null;
   }
 
   const outcomes = ["criticalFailure", "failure", "success", "criticalSuccess"];
-  return outcomes[Number(degree)] ?? null;
+  const result = outcomes[Number(degree)] ?? null;
+  if (debugLogging && result && (result === "criticalSuccess" || result === "criticalFailure")) {
+    console.log("Maestro_pf2e | Crit outcome from degree", result, "degree:", degree);
+  }
+  return result;
 }
 
 /**
