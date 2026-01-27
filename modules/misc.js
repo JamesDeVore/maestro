@@ -57,6 +57,20 @@ export class MaestroConfigForm extends FormApplication {
    * Build and return the HTML content directly (no Handlebars template)
    */
   async _renderInner(data) {
+    // Get current form values if form is already rendered (to preserve user selections during re-render)
+    let currentFormValues = {};
+    if (this.element && this.element.length > 0) {
+      const $form = this.element.find("form");
+      if ($form.length > 0) {
+        currentFormValues = {
+          criticalSuccessPlaylist: $form.find("select[name='critical-success-playlist']").val() || "",
+          criticalSuccessSound: $form.find("select[name='critical-success-sound']").val() || "",
+          criticalFailurePlaylist: $form.find("select[name='critical-failure-playlist']").val() || "",
+          criticalFailureSound: $form.find("select[name='critical-failure-sound']").val() || ""
+        };
+      }
+    }
+
     const criticalSuccessFailureTracks = game.settings.get(
       MAESTRO.MODULE_NAME,
       MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks
@@ -76,10 +90,11 @@ export class MaestroConfigForm extends FormApplication {
       };
     }
 
-    const currentSuccessPlaylist = this.data.criticalSuccessPlaylist || "";
-    const currentFailurePlaylist = this.data.criticalFailurePlaylist || "";
-    const currentSuccessSound = this.data.criticalSuccessSound || "";
-    const currentFailureSound = this.data.criticalFailureSound || "";
+    // Use current form values if available (preserves user input during re-render), otherwise use saved data
+    const currentSuccessPlaylist = currentFormValues.criticalSuccessPlaylist || this.data.criticalSuccessPlaylist || "";
+    const currentFailurePlaylist = currentFormValues.criticalFailurePlaylist || this.data.criticalFailurePlaylist || "";
+    const currentSuccessSound = currentFormValues.criticalSuccessSound || this.data.criticalSuccessSound || "";
+    const currentFailureSound = currentFormValues.criticalFailureSound || this.data.criticalFailureSound || "";
     
     // Get playlists
     const playlistsContents = game.playlists?.contents || [];
@@ -185,15 +200,20 @@ export class MaestroConfigForm extends FormApplication {
    * @param {*} formData
    */
   async _updateObject(event, formData) {
+    const settingsData = {
+      criticalSuccessPlaylist: formData["critical-success-playlist"] || "",
+      criticalSuccessSound: formData["critical-success-sound"] || "",
+      criticalFailurePlaylist: formData["critical-failure-playlist"] || "",
+      criticalFailureSound: formData["critical-failure-sound"] || "",
+    };
+    
+    // Update this.data to reflect saved values
+    this.data = settingsData;
+    
     await game.settings.set(
       MAESTRO.MODULE_NAME,
       MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks,
-      {
-        criticalSuccessPlaylist: formData["critical-success-playlist"] || "",
-        criticalSuccessSound: formData["critical-success-sound"] || "",
-        criticalFailurePlaylist: formData["critical-failure-playlist"] || "",
-        criticalFailureSound: formData["critical-failure-sound"] || "",
-      }
+      settingsData
     );
     ui.notifications.info(game.i18n.localize("MAESTRO.FORM.SaveSelections") + " - Settings saved!");
   }
@@ -239,11 +259,16 @@ export class MaestroConfigForm extends FormApplication {
     if (saveButton.length > 0) {
       saveButton.on("click", async (event) => {
         event.preventDefault();
-        const formData = new FormData(form[0]);
-        const formObject = {};
-        for (const [key, value] of formData.entries()) {
-          formObject[key] = value;
-        }
+        event.stopPropagation();
+        
+        // Collect form data directly from select elements to ensure we get current values
+        const formObject = {
+          "critical-success-playlist": $html.find("select[name='critical-success-playlist']").val() || "",
+          "critical-success-sound": $html.find("select[name='critical-success-sound']").val() || "",
+          "critical-failure-playlist": $html.find("select[name='critical-failure-playlist']").val() || "",
+          "critical-failure-sound": $html.find("select[name='critical-failure-sound']").val() || ""
+        };
+        
         await this._updateObject(event, formObject);
         this.close();
       });
