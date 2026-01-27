@@ -105,6 +105,12 @@ export class MaestroConfigForm extends FormApplication {
         }))
       : [];
 
+    // Mark "None" option as selected if no value is set
+    const noneSelectedForSuccess = !currentSuccessPlaylist;
+    const noneSelectedForFailure = !currentFailurePlaylist;
+    const noneSelectedForSuccessSound = !currentSuccessSound;
+    const noneSelectedForFailureSound = !currentFailureSound;
+
     return {
       playlists: playlists,
       criticalSuccessPlaylist: currentSuccessPlaylist,
@@ -112,11 +118,15 @@ export class MaestroConfigForm extends FormApplication {
       criticalSuccessSound: currentSuccessSound,
       criticalSuccessSoundIsRandom: currentSuccessSound === "random-track",
       criticalSuccessSoundIsPlayAll: currentSuccessSound === "play-all",
+      criticalSuccessSoundNoneSelected: noneSelectedForSuccessSound,
       criticalFailurePlaylist: currentFailurePlaylist,
       criticalFailurePlaylistSounds: criticalFailureSounds,
       criticalFailureSound: currentFailureSound,
       criticalFailureSoundIsRandom: currentFailureSound === "random-track",
       criticalFailureSoundIsPlayAll: currentFailureSound === "play-all",
+      criticalFailureSoundNoneSelected: noneSelectedForFailureSound,
+      criticalSuccessPlaylistNoneSelected: noneSelectedForSuccess,
+      criticalFailurePlaylistNoneSelected: noneSelectedForFailure,
     };
   }
 

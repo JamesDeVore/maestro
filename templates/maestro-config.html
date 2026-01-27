@@ -4,9 +4,9 @@
     <div class="form-group">
         <label>Critical Success Playlist</label>
         <select name="critical-success-playlist" class="playlist-select">
-            <option value="" {{#unless criticalSuccessPlaylist}}selected{{/unless}}>--None--</option>
+            <option value="" {{#if criticalSuccessPlaylistNoneSelected}}selected="selected"{{/if}}>--None--</option>
             {{#each playlists}}
-            <option value="{{this.id}}" {{#if this.selectedForSuccess}}selected{{/if}}>{{this.name}}</option>
+            <option value="{{this.id}}" {{#if this.selectedForSuccess}}selected="selected"{{/if}}>{{this.name}}</option>
             {{/each}}
         </select>
         <p class="notes">Select a playlist for Critical Success Tracks</p> 
@@ -15,13 +15,13 @@
     <div class="form-group">
         <label>Critical Success Sound</label>
         <select name="critical-success-sound" class="track-select">
-            <option value="" {{#unless criticalSuccessSound}}selected{{/unless}}>--None--</option>
+            <option value="" {{#if criticalSuccessSoundNoneSelected}}selected="selected"{{/if}}>--None--</option>
             {{#if criticalSuccessPlaylistSounds}}
-            <option value="random-track" {{#if criticalSuccessSoundIsRandom}}selected{{/if}}>--Play Random Track--</option>
-            <option value="play-all" {{#if criticalSuccessSoundIsPlayAll}}selected{{/if}}>--Play Playlist--</option>
+            <option value="random-track" {{#if criticalSuccessSoundIsRandom}}selected="selected"{{/if}}>--Play Random Track--</option>
+            <option value="play-all" {{#if criticalSuccessSoundIsPlayAll}}selected="selected"{{/if}}>--Play Playlist--</option>
             {{/if}}
             {{#each criticalSuccessPlaylistSounds}}
-            <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+            <option value="{{this.id}}" {{#if this.selected}}selected="selected"{{/if}}>{{this.name}}</option>
             {{/each}}
         </select>
         <p class="notes">Select a track/playback mode</p> 
@@ -30,9 +30,9 @@
     <div class="form-group">
         <label>Critical Failure Playlist</label>
         <select name="critical-failure-playlist" class="playlist-select">
-            <option value="" {{#unless criticalFailurePlaylist}}selected{{/unless}}>--None--</option>
+            <option value="" {{#if criticalFailurePlaylistNoneSelected}}selected="selected"{{/if}}>--None--</option>
             {{#each playlists}}
-            <option value="{{this.id}}" {{#if this.selectedForFailure}}selected{{/if}}>{{this.name}}</option>
+            <option value="{{this.id}}" {{#if this.selectedForFailure}}selected="selected"{{/if}}>{{this.name}}</option>
             {{/each}}
         </select>
         <p class="notes">Select a playlist for Critical Failure Tracks</p> 
@@ -41,13 +41,13 @@
     <div class="form-group">
         <label>Critical Failure Sound</label>
         <select name="critical-failure-sound" class="track-select">
-            <option value="" {{#unless criticalFailureSound}}selected{{/unless}}>--None--</option>
+            <option value="" {{#if criticalFailureSoundNoneSelected}}selected="selected"{{/if}}>--None--</option>
             {{#if criticalFailurePlaylistSounds}}
-            <option value="random-track" {{#if criticalFailureSoundIsRandom}}selected{{/if}}>--Play Random Track--</option>
-            <option value="play-all" {{#if criticalFailureSoundIsPlayAll}}selected{{/if}}>--Play Playlist--</option>
+            <option value="random-track" {{#if criticalFailureSoundIsRandom}}selected="selected"{{/if}}>--Play Random Track--</option>
+            <option value="play-all" {{#if criticalFailureSoundIsPlayAll}}selected="selected"{{/if}}>--Play Playlist--</option>
             {{/if}}
             {{#each criticalFailurePlaylistSounds}}
-            <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
+            <option value="{{this.id}}" {{#if this.selected}}selected="selected"{{/if}}>{{this.name}}</option>
             {{/each}}
         </select>
         <p class="notes">Select a track/playback mode</p> 
