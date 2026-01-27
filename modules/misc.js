@@ -60,7 +60,7 @@ export class MaestroConfigForm extends FormApplication {
     if (Handlebars.partials && Handlebars.partials[templatePath]) {
       delete Handlebars.partials[templatePath];
     }
-    return mergeObject(super.defaultOptions, {
+    return foundry.utils.mergeObject(super.defaultOptions, {
       id: "maestro-config",
       title: MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTitle,
       template: templatePath,

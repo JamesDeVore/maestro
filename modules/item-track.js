@@ -237,7 +237,7 @@ class ItemTrackForm extends FormApplication {
      * Default Options for this FormApplication
      */
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "item-track-form",
             title: MAESTRO.DEFAULT_CONFIG.ItemTrack.aTitle,
             template: MAESTRO.DEFAULT_CONFIG.ItemTrack.templatePath,

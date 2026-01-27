@@ -247,7 +247,7 @@ class CombatTrackForm extends FormApplication {
      * Default Options for this FormApplication
      */
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "combat-track-form",
             title: MAESTRO.DEFAULT_CONFIG.CombatTrack.aTitle,
             template: MAESTRO.DEFAULT_CONFIG.CombatTrack.templatePath,

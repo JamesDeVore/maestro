@@ -474,7 +474,7 @@ class HypeTrackActorForm extends FormApplication {
      * Default Options for this FormApplication
      */
     static get defaultOptions() {
-        return mergeObject(super.defaultOptions, {
+        return foundry.utils.mergeObject(super.defaultOptions, {
             id: "hype-track-form",
             title: MAESTRO.DEFAULT_CONFIG.HypeTrack.aTitle,
             template: MAESTRO.DEFAULT_CONFIG.HypeTrack.templatePath,
