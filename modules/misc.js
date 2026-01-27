@@ -31,16 +31,6 @@ function _addMaestroConfig(html) {
       MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks
     );
 
-    // Clear template cache before opening form
-    const templatePath = MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTemplatePath;
-    if (Handlebars.partials && Handlebars.partials[templatePath]) {
-      delete Handlebars.partials[templatePath];
-    }
-    // Also clear from Foundry's template cache
-    if (foundry?.applications?.handlebars?.templates) {
-      delete foundry.applications.handlebars.templates[templatePath];
-    }
-
     new MaestroConfigForm(data).render(true);
   });
 }
@@ -55,24 +45,18 @@ export class MaestroConfigForm extends FormApplication {
    * Default Options for this FormApplication
    */
   static get defaultOptions() {
-    const templatePath = MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTemplatePath;
-    // Clear template cache to force reload
-    if (Handlebars.partials && Handlebars.partials[templatePath]) {
-      delete Handlebars.partials[templatePath];
-    }
     return foundry.utils.mergeObject(super.defaultOptions, {
       id: "maestro-config",
       title: MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTitle,
-      template: templatePath,
       classes: ["sheet"],
       width: 500,
     });
   }
 
   /**
-   * Provide data to the template
+   * Build and return the HTML content directly (no Handlebars template)
    */
-  getData() {
+  async _renderInner(data) {
     const criticalSuccessFailureTracks = game.settings.get(
       MAESTRO.MODULE_NAME,
       MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks
@@ -97,55 +81,102 @@ export class MaestroConfigForm extends FormApplication {
     const currentSuccessSound = this.data.criticalSuccessSound || "";
     const currentFailureSound = this.data.criticalFailureSound || "";
     
-    // Ensure playlists is always an array
+    // Get playlists
     const playlistsContents = game.playlists?.contents || [];
-    const playlists = Array.isArray(playlistsContents) 
-      ? playlistsContents.map(p => ({ 
-          id: p.id, 
-          name: p.name,
-          selectedForSuccess: p.id === currentSuccessPlaylist,
-          selectedForFailure: p.id === currentFailurePlaylist
-        }))
-      : [];
+    const playlists = Array.isArray(playlistsContents) ? playlistsContents : [];
     
-    const criticalSuccessSounds = this.data.criticalSuccessPlaylist && playlistsContents.length > 0
-      ? (Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist) || []).map(s => ({ 
-          id: s.id ?? s._id, 
-          name: s.name,
-          selected: (s.id ?? s._id) === currentSuccessSound
-        }))
+    // Get sounds for selected playlists
+    const criticalSuccessSounds = this.data.criticalSuccessPlaylist && playlists.length > 0
+      ? (Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist) || [])
       : [];
-    const criticalFailureSounds = this.data.criticalFailurePlaylist && playlistsContents.length > 0
-      ? (Playback.getPlaylistSounds(this.data.criticalFailurePlaylist) || []).map(s => ({ 
-          id: s.id ?? s._id, 
-          name: s.name,
-          selected: (s.id ?? s._id) === currentFailureSound
-        }))
+    const criticalFailureSounds = this.data.criticalFailurePlaylist && playlists.length > 0
+      ? (Playback.getPlaylistSounds(this.data.criticalFailurePlaylist) || [])
       : [];
 
-    // Mark "None" option as selected if no value is set
-    const noneSelectedForSuccess = !currentSuccessPlaylist;
-    const noneSelectedForFailure = !currentFailurePlaylist;
-    const noneSelectedForSuccessSound = !currentSuccessSound;
-    const noneSelectedForFailureSound = !currentFailureSound;
+    // Build HTML
+    let html = `<form autocomplete="off">
+      <h2>Critical Success and Failure Tracks</h2>
 
-    return {
-      playlists: playlists,
-      criticalSuccessPlaylist: currentSuccessPlaylist,
-      criticalSuccessPlaylistSounds: criticalSuccessSounds,
-      criticalSuccessSound: currentSuccessSound,
-      criticalSuccessSoundIsRandom: currentSuccessSound === "random-track",
-      criticalSuccessSoundIsPlayAll: currentSuccessSound === "play-all",
-      criticalSuccessSoundNoneSelected: noneSelectedForSuccessSound,
-      criticalFailurePlaylist: currentFailurePlaylist,
-      criticalFailurePlaylistSounds: criticalFailureSounds,
-      criticalFailureSound: currentFailureSound,
-      criticalFailureSoundIsRandom: currentFailureSound === "random-track",
-      criticalFailureSoundIsPlayAll: currentFailureSound === "play-all",
-      criticalFailureSoundNoneSelected: noneSelectedForFailureSound,
-      criticalSuccessPlaylistNoneSelected: noneSelectedForSuccess,
-      criticalFailurePlaylistNoneSelected: noneSelectedForFailure,
-    };
+      <div class="form-group">
+        <label>Critical Success Playlist</label>
+        <select name="critical-success-playlist" class="playlist-select">
+          <option value="" ${!currentSuccessPlaylist ? 'selected="selected"' : ''}>--None--</option>`;
+
+    // Add playlist options
+    for (const playlist of playlists) {
+      const selected = playlist.id === currentSuccessPlaylist ? 'selected="selected"' : '';
+      html += `\n          <option value="${playlist.id}" ${selected}>${playlist.name}</option>`;
+    }
+
+    html += `
+        </select>
+        <p class="notes">Select a playlist for Critical Success Tracks</p>
+      </div>
+
+      <div class="form-group">
+        <label>Critical Success Sound</label>
+        <select name="critical-success-sound" class="track-select">
+          <option value="" ${!currentSuccessSound ? 'selected="selected"' : ''}>--None--</option>`;
+
+    if (criticalSuccessSounds.length > 0) {
+      html += `\n          <option value="random-track" ${currentSuccessSound === "random-track" ? 'selected="selected"' : ''}>--Play Random Track--</option>`;
+      html += `\n          <option value="play-all" ${currentSuccessSound === "play-all" ? 'selected="selected"' : ''}>--Play Playlist--</option>`;
+      
+      for (const sound of criticalSuccessSounds) {
+        const soundId = sound.id ?? sound._id;
+        const selected = soundId === currentSuccessSound ? 'selected="selected"' : '';
+        html += `\n          <option value="${soundId}" ${selected}>${sound.name}</option>`;
+      }
+    }
+
+    html += `
+        </select>
+        <p class="notes">Select a track/playback mode</p>
+      </div>
+
+      <div class="form-group">
+        <label>Critical Failure Playlist</label>
+        <select name="critical-failure-playlist" class="playlist-select">
+          <option value="" ${!currentFailurePlaylist ? 'selected="selected"' : ''}>--None--</option>`;
+
+    // Add playlist options
+    for (const playlist of playlists) {
+      const selected = playlist.id === currentFailurePlaylist ? 'selected="selected"' : '';
+      html += `\n          <option value="${playlist.id}" ${selected}>${playlist.name}</option>`;
+    }
+
+    html += `
+        </select>
+        <p class="notes">Select a playlist for Critical Failure Tracks</p>
+      </div>
+
+      <div class="form-group">
+        <label>Critical Failure Sound</label>
+        <select name="critical-failure-sound" class="track-select">
+          <option value="" ${!currentFailureSound ? 'selected="selected"' : ''}>--None--</option>`;
+
+    if (criticalFailureSounds.length > 0) {
+      html += `\n          <option value="random-track" ${currentFailureSound === "random-track" ? 'selected="selected"' : ''}>--Play Random Track--</option>`;
+      html += `\n          <option value="play-all" ${currentFailureSound === "play-all" ? 'selected="selected"' : ''}>--Play Playlist--</option>`;
+      
+      for (const sound of criticalFailureSounds) {
+        const soundId = sound.id ?? sound._id;
+        const selected = soundId === currentFailureSound ? 'selected="selected"' : '';
+        html += `\n          <option value="${soundId}" ${selected}>${sound.name}</option>`;
+      }
+    }
+
+    html += `
+        </select>
+        <p class="notes">Select a track/playback mode</p>
+      </div>
+
+      <button type="submit" name="submit">
+        <i class="far fa-save"></i> Save Selections
+      </button>
+    </form>`;
+
+    return $(html);
   }
 
   /**

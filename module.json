@@ -4,7 +4,7 @@
   "title": "Maestro_pf2e",
   "description": "Tweaked version for use in pf2e anf pf2 quick rolls",
   "author": "Evan Clarke (errational#2007), edited by James DeVore",
-  "version": "0.8.10",
+  "version": "0.9.0",
   "compatibility": {
     "minimum": "13",
     "verified": "13",
