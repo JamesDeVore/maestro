@@ -349,6 +349,22 @@ function playCriticalSuccessFailure(message) {
     return;
   }
 
+  // Skip damage rolls - they can inherit outcome from the attack check but shouldn't trigger crit sounds
+  const isDamageRoll = message.flags?.pf2e?.context?.type === "damage-roll" || 
+                       (message.isDamageRoll !== undefined && message.isDamageRoll === true) ||
+                       (message.rolls?.[0] && message.rolls[0].constructor?.name === "DamageRoll");
+  if (isDamageRoll) {
+    if (debugLogging) {
+      console.debug("Maestro_pf2e | Crit skip: damage roll", {
+        id: message?.id,
+        contextType: message.flags?.pf2e?.context?.type,
+        isDamageRoll: message.isDamageRoll,
+        rollType: message.rolls?.[0]?.constructor?.name
+      });
+    }
+    return;
+  }
+
   const outcome = getPf2eOutcome(message);
   if (!outcome) {
     if (debugLogging) {
