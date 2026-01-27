@@ -94,7 +94,7 @@ export class MaestroConfigForm extends FormApplication {
       : [];
 
     // Build HTML
-    let html = `<form autocomplete="off">
+    let html = `<form autocomplete="off" onsubmit="event.preventDefault(); return false;">
       <h2>Critical Success and Failure Tracks</h2>
 
       <div class="form-group">
@@ -202,6 +202,15 @@ export class MaestroConfigForm extends FormApplication {
     super.activateListeners(html);
     const $html = html instanceof jQuery ? html : $(html);
 
+    // Prevent form submission on Enter key or other default behaviors
+    const form = $html.find("form");
+    if (form.length > 0) {
+      form.on("submit", (event) => {
+        event.preventDefault();
+        return false;
+      });
+    }
+
     const criticalPlaylistSelect = $html.find(
       "select[name='critical-success-playlist']"
     );
@@ -211,6 +220,7 @@ export class MaestroConfigForm extends FormApplication {
 
     if (criticalPlaylistSelect.length > 0) {
       criticalPlaylistSelect.on("change", (event) => {
+        event.preventDefault();
         this.data.criticalSuccessPlaylist = event.target.value;
         this.render();
       });
@@ -218,8 +228,24 @@ export class MaestroConfigForm extends FormApplication {
 
     if (failurePlaylistSelect.length > 0) {
       failurePlaylistSelect.on("change", (event) => {
+        event.preventDefault();
         this.data.criticalFailurePlaylist = event.target.value;
         this.render();
+      });
+    }
+
+    // Handle save button click explicitly
+    const saveButton = $html.find("button[type='submit']");
+    if (saveButton.length > 0) {
+      saveButton.on("click", async (event) => {
+        event.preventDefault();
+        const formData = new FormData(form[0]);
+        const formObject = {};
+        for (const [key, value] of formData.entries()) {
+          formObject[key] = value;
+        }
+        await this._updateObject(event, formObject);
+        this.close();
       });
     }
   }
