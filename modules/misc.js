@@ -66,6 +66,16 @@ export class MaestroConfigForm extends FormApplication {
     if (!this.data && criticalSuccessFailureTracks) {
       this.data = criticalSuccessFailureTracks;
     }
+    
+    // Ensure this.data exists with defaults
+    if (!this.data) {
+      this.data = {
+        criticalSuccessPlaylist: "",
+        criticalSuccessSound: "",
+        criticalFailurePlaylist: "",
+        criticalFailureSound: ""
+      };
+    }
 
     // Format playlists as simple array for template iteration
     const playlists = game.playlists.contents.map(p => ({ id: p.id, name: p.name }));
@@ -78,12 +88,12 @@ export class MaestroConfigForm extends FormApplication {
 
     return {
       playlists: playlists,
-      criticalSuccessPlaylist: this.data.criticalSuccessPlaylist,
+      criticalSuccessPlaylist: this.data.criticalSuccessPlaylist || "",
       criticalSuccessPlaylistSounds: criticalSuccessSounds,
-      criticalSuccessSound: this.data.criticalSuccessSound,
-      criticalFailurePlaylist: this.data.criticalFailurePlaylist,
+      criticalSuccessSound: this.data.criticalSuccessSound || "",
+      criticalFailurePlaylist: this.data.criticalFailurePlaylist || "",
       criticalFailurePlaylistSounds: criticalFailureSounds,
-      criticalFailureSound: this.data.criticalFailureSound,
+      criticalFailureSound: this.data.criticalFailureSound || "",
     };
   }
 
@@ -97,12 +107,13 @@ export class MaestroConfigForm extends FormApplication {
       MAESTRO.MODULE_NAME,
       MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks,
       {
-        criticalSuccessPlaylist: formData["critical-success-playlist"],
-        criticalSuccessSound: formData["critical-success-sound"],
-        criticalFailurePlaylist: formData["critical-failure-playlist"],
-        criticalFailureSound: formData["critical-failure-sound"],
+        criticalSuccessPlaylist: formData["critical-success-playlist"] || "",
+        criticalSuccessSound: formData["critical-success-sound"] || "",
+        criticalFailurePlaylist: formData["critical-failure-playlist"] || "",
+        criticalFailureSound: formData["critical-failure-sound"] || "",
       }
     );
+    ui.notifications.info(game.i18n.localize("MAESTRO.FORM.SaveSelections") + " - Settings saved!");
   }
 
   activateListeners(html) {
