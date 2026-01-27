@@ -82,23 +82,26 @@ export class MaestroConfigForm extends FormApplication {
     const currentSuccessSound = this.data.criticalSuccessSound || "";
     const currentFailureSound = this.data.criticalFailureSound || "";
     
-    // Format playlists with selected flags for each dropdown
-    const playlists = game.playlists.contents.map(p => ({ 
-      id: p.id, 
-      name: p.name,
-      selectedForSuccess: p.id === currentSuccessPlaylist,
-      selectedForFailure: p.id === currentFailurePlaylist
-    }));
+    // Ensure playlists is always an array
+    const playlistsContents = game.playlists?.contents || [];
+    const playlists = Array.isArray(playlistsContents) 
+      ? playlistsContents.map(p => ({ 
+          id: p.id, 
+          name: p.name,
+          selectedForSuccess: p.id === currentSuccessPlaylist,
+          selectedForFailure: p.id === currentFailurePlaylist
+        }))
+      : [];
     
-    const criticalSuccessSounds = this.data.criticalSuccessPlaylist
-      ? Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist).map(s => ({ 
+    const criticalSuccessSounds = this.data.criticalSuccessPlaylist && playlistsContents.length > 0
+      ? (Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist) || []).map(s => ({ 
           id: s.id ?? s._id, 
           name: s.name,
           selected: (s.id ?? s._id) === currentSuccessSound
         }))
       : [];
-    const criticalFailureSounds = this.data.criticalFailurePlaylist
-      ? Playback.getPlaylistSounds(this.data.criticalFailurePlaylist).map(s => ({ 
+    const criticalFailureSounds = this.data.criticalFailurePlaylist && playlistsContents.length > 0
+      ? (Playback.getPlaylistSounds(this.data.criticalFailurePlaylist) || []).map(s => ({ 
           id: s.id ?? s._id, 
           name: s.name,
           selected: (s.id ?? s._id) === currentFailureSound
