@@ -1,67 +1,59 @@
-<form autocomplete="off" onsubmit="event.preventDefault()">
-    <h2>{{localize "MAESTRO-CONFIG.CriticalSuccessFailureHeading"}}</h2>
+<form autocomplete="off">
+    <h2>Critical Success/Failure Tracks</h2>
 
     <div class="form-group">
-        <label>{{localize "MAESTRO-CONFIG.CriticalSuccessPlaylist"}}</label>
-        <select name="critical-success-playlist" class="playlist-select" title="{{localize "FORM.PlaylistSelection"}}" default="">
-            {{#select criticalSuccessPlaylist}}
-            <option value="">{{localize "FORM.SelectNone"}}</option>
+        <label>Critical Success Playlist</label>
+        <select name="critical-success-playlist" class="playlist-select">
+            <option value="" {{#unless criticalSuccessPlaylist}}selected{{/unless}}>--None--</option>
             {{#each playlists}}
-            <option value="{{this.id}}">{{this.name}}</option>
+            <option value="{{this.id}}" {{#if this.selectedForSuccess}}selected{{/if}}>{{this.name}}</option>
             {{/each}}
-            {{/select}}
         </select>
-        <p class="notes">{{localize "MAESTRO-CONFIG.Critical.FormPlaylistNotes"}}</p> 
+        <p class="notes">Select a playlist for Critical Success Tracks</p> 
     </div>
 
     <div class="form-group">
-        <label>{{localize "MAESTRO-CONFIG.CriticalSuccessSound"}}</label>
-        <select name="critical-success-sound" class="track-select" title="{{localize "FORM.TrackSelection"}}">
-            <option value="">{{localize "FORM.SelectNone"}}</option>
+        <label>Critical Success Sound</label>
+        <select name="critical-success-sound" class="track-select">
+            <option value="" {{#unless criticalSuccessSound}}selected{{/unless}}>--None--</option>
             {{#if criticalSuccessPlaylistSounds}}
-            <option value="random-track">{{localize "FORM.PlayRandom"}}</option>
-            <option value="play-all">{{localize "FORM.PlayAll"}}</option>
+            <option value="random-track" {{#if criticalSuccessSoundIsRandom}}selected{{/if}}>--Play Random Track--</option>
+            <option value="play-all" {{#if criticalSuccessSoundIsPlayAll}}selected{{/if}}>--Play Playlist--</option>
             {{/if}}
-            {{#select criticalSuccessSound}}
             {{#each criticalSuccessPlaylistSounds}}
-            <option value="{{this.id}}">{{this.name}}</option>
+            <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
             {{/each}}
-            {{/select}}
         </select>
-        <p class="notes">{{localize "MAESTRO-CONFIG.Critical.FormSoundNotes"}}</p> 
+        <p class="notes">Select a track/playback mode</p> 
     </div>
 
     <div class="form-group">
-        <label>{{localize "MAESTRO-CONFIG.CriticalFailurePlaylist"}}</label>
-        <select name="critical-failure-playlist" class="playlist-select" title="{{localize "FORM.PlaylistSelection"}}" default="">
-            {{#select criticalFailurePlaylist}}
-            <option value="">{{localize "FORM.SelectNone"}}</option>
+        <label>Critical Failure Playlist</label>
+        <select name="critical-failure-playlist" class="playlist-select">
+            <option value="" {{#unless criticalFailurePlaylist}}selected{{/unless}}>--None--</option>
             {{#each playlists}}
-            <option value="{{this.id}}">{{this.name}}</option>
+            <option value="{{this.id}}" {{#if this.selectedForFailure}}selected{{/if}}>{{this.name}}</option>
             {{/each}}
-            {{/select}}
         </select>
-        <p class="notes">{{localize "MAESTRO-CONFIG.Failure.FormPlaylistNotes"}}</p> 
+        <p class="notes">Select a playlist for Critical Failure Tracks</p> 
     </div>
 
     <div class="form-group">
-        <label>{{localize "MAESTRO-CONFIG.CriticalFailureSound"}}</label>
-        <select name="critical-failure-sound" class="track-select" title="{{localize "FORM.TrackSelection"}}">
-            <option value="">{{localize "FORM.SelectNone"}}</option>
+        <label>Critical Failure Sound</label>
+        <select name="critical-failure-sound" class="track-select">
+            <option value="" {{#unless criticalFailureSound}}selected{{/unless}}>--None--</option>
             {{#if criticalFailurePlaylistSounds}}
-            <option value="random-track">{{localize "FORM.PlayRandom"}}</option>
-            <option value="play-all">{{localize "FORM.PlayAll"}}</option>
+            <option value="random-track" {{#if criticalFailureSoundIsRandom}}selected{{/if}}>--Play Random Track--</option>
+            <option value="play-all" {{#if criticalFailureSoundIsPlayAll}}selected{{/if}}>--Play Playlist--</option>
             {{/if}}
-            {{#select criticalFailureSound}}
             {{#each criticalFailurePlaylistSounds}}
-            <option value="{{this.id}}">{{this.name}}</option>
+            <option value="{{this.id}}" {{#if this.selected}}selected{{/if}}>{{this.name}}</option>
             {{/each}}
-            {{/select}}
         </select>
-        <p class="notes">{{localize "MAESTRO-CONFIG.Failure.FormSoundNotes"}}</p> 
+        <p class="notes">Select a track/playback mode</p> 
     </div>
 
     <button type="submit" name="submit">
-        <i class="far fa-save"></i> {{localize "FORM.SaveSelections"}}
+        <i class="far fa-save"></i> Save Selections
     </button>
 </form>

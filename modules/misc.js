@@ -77,23 +77,46 @@ export class MaestroConfigForm extends FormApplication {
       };
     }
 
-    // Format playlists as simple array for template iteration
-    const playlists = game.playlists.contents.map(p => ({ id: p.id, name: p.name }));
+    const currentSuccessPlaylist = this.data.criticalSuccessPlaylist || "";
+    const currentFailurePlaylist = this.data.criticalFailurePlaylist || "";
+    const currentSuccessSound = this.data.criticalSuccessSound || "";
+    const currentFailureSound = this.data.criticalFailureSound || "";
+    
+    // Format playlists with selected flags for each dropdown
+    const playlists = game.playlists.contents.map(p => ({ 
+      id: p.id, 
+      name: p.name,
+      selectedForSuccess: p.id === currentSuccessPlaylist,
+      selectedForFailure: p.id === currentFailurePlaylist
+    }));
+    
     const criticalSuccessSounds = this.data.criticalSuccessPlaylist
-      ? Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist).map(s => ({ id: s.id ?? s._id, name: s.name }))
+      ? Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist).map(s => ({ 
+          id: s.id ?? s._id, 
+          name: s.name,
+          selected: (s.id ?? s._id) === currentSuccessSound
+        }))
       : [];
     const criticalFailureSounds = this.data.criticalFailurePlaylist
-      ? Playback.getPlaylistSounds(this.data.criticalFailurePlaylist).map(s => ({ id: s.id ?? s._id, name: s.name }))
+      ? Playback.getPlaylistSounds(this.data.criticalFailurePlaylist).map(s => ({ 
+          id: s.id ?? s._id, 
+          name: s.name,
+          selected: (s.id ?? s._id) === currentFailureSound
+        }))
       : [];
 
     return {
       playlists: playlists,
-      criticalSuccessPlaylist: this.data.criticalSuccessPlaylist || "",
+      criticalSuccessPlaylist: currentSuccessPlaylist,
       criticalSuccessPlaylistSounds: criticalSuccessSounds,
-      criticalSuccessSound: this.data.criticalSuccessSound || "",
-      criticalFailurePlaylist: this.data.criticalFailurePlaylist || "",
+      criticalSuccessSound: currentSuccessSound,
+      criticalSuccessSoundIsRandom: currentSuccessSound === "random-track",
+      criticalSuccessSoundIsPlayAll: currentSuccessSound === "play-all",
+      criticalFailurePlaylist: currentFailurePlaylist,
       criticalFailurePlaylistSounds: criticalFailureSounds,
-      criticalFailureSound: this.data.criticalFailureSound || "",
+      criticalFailureSound: currentFailureSound,
+      criticalFailureSoundIsRandom: currentFailureSound === "random-track",
+      criticalFailureSoundIsPlayAll: currentFailureSound === "play-all",
     };
   }
 
