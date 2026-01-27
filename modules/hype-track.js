@@ -276,9 +276,10 @@ export default class HypeTrack {
      * Sets the Hype Track
      * @param {Number} trackId - Id of the track in the playlist 
      */
-    async _setActorHypeTrack(actor, trackId) {
+    async _setActorHypeTrack(actor, playlistId, trackId) {
         try {
-            await actor.setFlag(MAESTRO.MODULE_NAME, MAESTRO.DEFAULT_CONFIG.HypeTrack.flagNames.track, trackId);
+            await actor.setFlag(MAESTRO.MODULE_NAME, MAESTRO.DEFAULT_CONFIG.HypeTrack.flagNames.playlist, playlistId || null);
+            await actor.setFlag(MAESTRO.MODULE_NAME, MAESTRO.DEFAULT_CONFIG.HypeTrack.flagNames.track, trackId || null);
         } catch (e) {
             //we should do something with this in the future, eg. if the flag can't be found
             throw e
@@ -379,9 +380,11 @@ export default class HypeTrack {
      * @param {Object} options  form options
      */
     _openTrackForm(actor, track, options){
+        // Get playlist from actor flag, or fall back to default playlist
+        const actorPlaylist = actor.getFlag(MAESTRO.MODULE_NAME, MAESTRO.DEFAULT_CONFIG.HypeTrack.flagNames.playlist) || this.playlist?.id || "";
         const data = {
-            "track": track,
-            "playlist": this.playlist
+            "track": track || "",
+            "playlist": actorPlaylist
         }
         new HypeTrackActorForm(actor, data, options).render(true);
     }
@@ -477,29 +480,83 @@ class HypeTrackActorForm extends FormApplication {
         return foundry.utils.mergeObject(super.defaultOptions, {
             id: "hype-track-form",
             title: MAESTRO.DEFAULT_CONFIG.HypeTrack.aTitle,
-            template: MAESTRO.DEFAULT_CONFIG.HypeTrack.templatePath,
             classes: ["sheet"],
             width: 500
         });
     }
 
     /**
-     * Provide data to the handlebars template
+     * Build and return the HTML content directly (no Handlebars template)
      */
-    async getData() {
-        const playlist = this.data.playlist || game.playlists.contents.find(p => p.name === MAESTRO.DEFAULT_CONFIG.HypeTrack.playlistName) || null;
-        const playlistSounds = playlist?.sounds?.contents ?? [];
-        
-        // Format for template: array of {value, label} objects for {{#select}}
-        const playlists = game.playlists.contents.map(p => ({ value: p.id, label: p.name }));
-        const sounds = playlistSounds.map(s => ({ value: s.id ?? s._id, label: s.name }));
-        
-        return {
-            playlist: playlist?.id ?? "",
-            playlists: playlists,
-            playlistSounds: sounds,
-            track: this.data.track
+    async _renderInner(data) {
+        // Get current form values if form is already rendered (to preserve user selections during re-render)
+        let currentFormValues = {};
+        if (this.element && this.element.length > 0) {
+            const $form = this.element.find("form");
+            if ($form.length > 0) {
+                currentFormValues = {
+                    playlist: $form.find("select[name='playlist']").val() || "",
+                    track: $form.find("select[name='track']").val() || ""
+                };
+            }
         }
+
+        // Use current form values if available, otherwise use saved data
+        const currentPlaylist = currentFormValues.playlist || this.data.playlist || "";
+        const currentTrack = currentFormValues.track || this.data.track || "";
+
+        // Get playlists
+        const playlists = game.playlists?.contents || [];
+        
+        // Get sounds for selected playlist
+        const selectedPlaylist = currentPlaylist ? playlists.find(p => p.id === currentPlaylist) : null;
+        const playlistSounds = selectedPlaylist?.sounds?.contents || [];
+
+        // Build HTML
+        let html = `<form autocomplete="off" onsubmit="event.preventDefault(); return false;">
+            <div class="form-group">
+                <label>Hype Playlist for this Actor</label>
+                <select name="playlist" class="playlist-select">
+                    <option value="" ${!currentPlaylist ? 'selected="selected"' : ''}>--None--</option>`;
+
+        // Add playlist options
+        for (const playlist of playlists) {
+            const selected = playlist.id === currentPlaylist ? 'selected="selected"' : '';
+            html += `\n                    <option value="${playlist.id}" ${selected}>${playlist.name}</option>`;
+        }
+
+        html += `
+                </select>
+                <p class="notes">Select the playlist that contains the Hype Track/s to play</p>
+            </div>
+
+            <div class="form-group">
+                <label>Track to Play</label>
+                <select name="track" class="track-select">
+                    <option value="" ${!currentTrack ? 'selected="selected"' : ''}>--None--</option>`;
+
+        if (playlistSounds.length > 0) {
+            html += `\n                    <option value="random-track" ${currentTrack === "random-track" ? 'selected="selected"' : ''}>--Play Random Track--</option>`;
+            html += `\n                    <option value="play-all" ${currentTrack === "play-all" ? 'selected="selected"' : ''}>--Play Playlist--</option>`;
+            
+            for (const sound of playlistSounds) {
+                const soundId = sound.id ?? sound._id;
+                const selected = soundId === currentTrack ? 'selected="selected"' : '';
+                html += `\n                    <option value="${soundId}" ${selected}>${sound.name}</option>`;
+            }
+        }
+
+        html += `
+                </select>
+                <p class="notes">Select the track or playback mode to use as this Actor's Hype Track</p>
+            </div>
+
+            <button type="submit" name="submit">
+                <i class="far fa-save"></i> Save Changes
+            </button>
+        </form>`;
+
+        return $(html);
     }
 
     /**
@@ -522,9 +579,14 @@ class HypeTrackActorForm extends FormApplication {
             });
         }
         
-        // If playlist changed, we might need to update the track
-        const track = formData.track || null;
-        await game.maestro.hypeTrack._setActorHypeTrack(this.actor, track);
+        // Update this.data to reflect saved values
+        this.data = {
+            playlist: formData.playlist || "",
+            track: formData.track || ""
+        };
+        
+        // Set both playlist and track flags on the actor
+        await game.maestro.hypeTrack._setActorHypeTrack(this.actor, formData.playlist, formData.track);
     }
     
     /**
@@ -533,33 +595,42 @@ class HypeTrackActorForm extends FormApplication {
     activateListeners(html) {
         super.activateListeners(html);
         const $html = html instanceof jQuery ? html : $(html);
+
+        // Prevent form submission on Enter key or other default behaviors
+        const form = $html.find("form");
+        if (form.length > 0) {
+            form.on("submit", (event) => {
+                event.preventDefault();
+                return false;
+            });
+        }
         
         // Update track options when playlist changes
-        $html.find("select[name='playlist']").on("change", async (event) => {
-            const playlistId = event.target.value;
-            if (!playlistId) {
-                $html.find("select[name='track']").html(`<option value="">${game.i18n.localize("MAESTRO.HYPE-TRACK.FormSelectNone")}</option>`);
-                return;
-            }
-            
-            const playlist = game.playlists.get(playlistId);
-            if (!playlist) return;
-            
-            const sounds = playlist.sounds?.contents ?? [];
-            const trackSelect = $html.find("select[name='track']");
-            let options = `<option value="">${game.i18n.localize("MAESTRO.HYPE-TRACK.FormSelectNone")}</option>`;
-            
-            if (sounds.length > 0) {
-                options += `<option value="random-track">${game.i18n.localize("MAESTRO.FORM.PlayRandom")}</option>`;
-                options += `<option value="play-all">${game.i18n.localize("MAESTRO.FORM.PlayAll")}</option>`;
-                sounds.forEach(sound => {
-                    const id = sound.id ?? sound._id;
-                    const name = sound.name;
-                    options += `<option value="${id}">${name}</option>`;
-                });
-            }
-            
-            trackSelect.html(options);
-        });
+        const playlistSelect = $html.find("select[name='playlist']");
+        if (playlistSelect.length > 0) {
+            playlistSelect.on("change", async (event) => {
+                event.preventDefault();
+                this.data.playlist = event.target.value;
+                this.render();
+            });
+        }
+
+        // Handle save button click explicitly
+        const saveButton = $html.find("button[type='submit']");
+        if (saveButton.length > 0) {
+            saveButton.on("click", async (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                
+                // Collect form data directly from select elements
+                const formObject = {
+                    playlist: $html.find("select[name='playlist']").val() || "",
+                    track: $html.find("select[name='track']").val() || ""
+                };
+                
+                await this._updateObject(event, formObject);
+                this.close();
+            });
+        }
     }
 }
