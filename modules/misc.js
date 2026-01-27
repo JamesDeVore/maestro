@@ -31,6 +31,16 @@ function _addMaestroConfig(html) {
       MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks
     );
 
+    // Clear template cache before opening form
+    const templatePath = MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTemplatePath;
+    if (Handlebars.partials && Handlebars.partials[templatePath]) {
+      delete Handlebars.partials[templatePath];
+    }
+    // Also clear from Foundry's template cache
+    if (foundry?.applications?.handlebars?.templates) {
+      delete foundry.applications.handlebars.templates[templatePath];
+    }
+
     new MaestroConfigForm(data).render(true);
   });
 }
@@ -45,10 +55,15 @@ export class MaestroConfigForm extends FormApplication {
    * Default Options for this FormApplication
    */
   static get defaultOptions() {
+    const templatePath = MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTemplatePath;
+    // Clear template cache to force reload
+    if (Handlebars.partials && Handlebars.partials[templatePath]) {
+      delete Handlebars.partials[templatePath];
+    }
     return mergeObject(super.defaultOptions, {
       id: "maestro-config",
       title: MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTitle,
-      template: MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTemplatePath,
+      template: templatePath,
       classes: ["sheet"],
       width: 500,
     });
