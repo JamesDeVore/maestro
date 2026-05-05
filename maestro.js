@@ -190,6 +190,7 @@ export default class Conductor {
         Conductor._hookOnRenderActorSheet();
         Conductor._hookOnRenderItemSheet();
         Conductor._hookOnRenderChatMessage();
+        Conductor._hookOnCreateChatMessage();
 
         // Pre-Create Hooks
         Conductor._hookOnPreCreateChatMessage();
@@ -320,8 +321,16 @@ export default class Conductor {
     static _hookOnRenderChatMessage() {
         Hooks.on("renderChatMessage", (message, html, data) => {
             game.maestro.itemTrack.chatMessageHandler(message, html, data);
-            Misc._onRenderChatMessage(message, html, data);
-        })
+        });
+    }
+
+    /**
+     * CreateChatMessage Hook — critical roll sounds (once per message; see Misc module).
+     */
+    static _hookOnCreateChatMessage() {
+        Hooks.on("createChatMessage", async (message, options, userId) => {
+            await Misc._onCreateChatMessage(message, options, userId);
+        });
     }
 
     /**

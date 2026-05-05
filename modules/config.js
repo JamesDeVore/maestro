@@ -91,7 +91,10 @@ export const DEFAULT_CONFIG = {
             criticalSuccessPlaylistName: "Critical Success Tracks",
             criticalFailurePlaylistName: "Critical Failure Tracks",
             maestroConfigTitle: "Additional Configuration",
-            maestroConfigTemplatePath: "./modules/maestro/templates/maestro-config.html"
+            maestroConfigTemplatePath: "./modules/maestro/templates/maestro-config.html",
+            flagNames: {
+                critSoundPlayed: "crit-sound-played"
+            }
         }
     }
 }

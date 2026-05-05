@@ -29,13 +29,36 @@ export function getPlaylistSound(trackId) {
 }
 
 /**
+ * When a playlist sound finishes, resume previously paused sounds (used after duckOthers playback).
+ * @param {*} pausedSounds - playlist sound documents previously paused by pauseAll
+ * @param {*} playlistSoundDoc - PlaylistSound document whose sound instance should emit "end"
+ */
+function attachResumeWhenSoundEnds(playlistSoundDoc, pausedSounds) {
+    if (!pausedSounds?.length) {
+        return;
+    }
+    const resume = () => resumeSounds(pausedSounds);
+    const soundInstance = playlistSoundDoc?.sound;
+    if (!soundInstance) {
+        resume();
+        return;
+    }
+    if (typeof soundInstance.once === "function") {
+        soundInstance.once("end", resume);
+    } else {
+        soundInstance.on("end", resume);
+    }
+}
+
+/**
  * Play a playlist sound based on the given trackId
  * @param {String} trackId - the track Id or playback mode
  * @param {String} playlistId - the playlist id
  * @param {Object} [options]
  * @param {boolean} [options.repeat] - override sound repeat behavior
+ * @param {boolean} [options.duckOthers] - pause all other playing playlist sounds and resume them when this track ends
  */
-export async function playTrack(trackId, playlistId, {repeat} = {}) {
+export async function playTrack(trackId, playlistId, {repeat, duckOthers} = {}) {
     if (!playlistId) {
         return;
     }
@@ -69,7 +92,23 @@ export async function playTrack(trackId, playlistId, {repeat} = {}) {
         await sound.update({repeat: false});
     }
 
-    return await playlist.playSound(sound);
+    let pausedSounds = [];
+    if (duckOthers) {
+        pausedSounds = pauseAll() ?? [];
+    }
+
+    try {
+        const result = await playlist.playSound(sound);
+        if (duckOthers && pausedSounds.length) {
+            attachResumeWhenSoundEnds(sound, pausedSounds);
+        }
+        return result;
+    } catch (err) {
+        if (duckOthers && pausedSounds.length) {
+            resumeSounds(pausedSounds);
+        }
+        throw err;
+    }
 }
 
 /**
@@ -150,7 +189,7 @@ export function pauseSounds(sounds) {
         }
 
         if (!playlistSound) {
-            return;
+            continue;
         }
         const soundInstance = playlistSound.sound;
         soundInstance?.pause();

@@ -441,12 +441,13 @@ export function _onPreCreateChatMessage(message, options, userId) {
 }
 
 /**
- * Render Chat Message handler
- * @param {*} message
- * @param {*} html
- * @param {*} data
+ * Create Chat Message handler — plays critical success/failure audio once per message
+ * (renderChatMessage can fire repeatedly for the same document).
+ * @param {foundry.documents.ChatMessage} message
+ * @param {*} options
+ * @param {string} userId
  */
-export function _onRenderChatMessage(message, html, data) {
+export async function _onCreateChatMessage(message, options, userId) {
   const enableCriticalSuccessFailureTracks = game.settings.get(
     MAESTRO.MODULE_NAME,
     MAESTRO.SETTINGS_KEYS.Misc.enableCriticalSuccessFailureTracks
@@ -456,18 +457,22 @@ export function _onRenderChatMessage(message, html, data) {
     MAESTRO.SETTINGS_KEYS.Misc.debugLogging
   );
 
-  if (enableCriticalSuccessFailureTracks) {
-    playCriticalSuccessFailure(message);
-  } else if (debugLogging) {
-    console.debug("Maestro_pf2e | Crit tracks disabled; message id", message?.id);
+  if (!enableCriticalSuccessFailureTracks) {
+    if (debugLogging) {
+      console.debug("Maestro_pf2e | Crit tracks disabled; message id", message?.id);
+    }
+    return;
   }
+
+  await playCriticalSuccessFailure(message);
 }
 
 /**
- * Play a sound for critical success or failure on PF2e checks
- * @param {*} message
+ * Play a sound for critical success or failure on PF2e checks (GM only).
+ * Invoked from the `createChatMessage` hook so each roll triggers at most once; ducks other audio like hype tracks.
+ * @param {foundry.documents.ChatMessage} message
  */
-function playCriticalSuccessFailure(message) {
+async function playCriticalSuccessFailure(message) {
   const debugLogging = game.settings.get(
     MAESTRO.MODULE_NAME,
     MAESTRO.SETTINGS_KEYS.Misc.debugLogging
@@ -521,6 +526,18 @@ function playCriticalSuccessFailure(message) {
     return;
   }
 
+  if (outcome !== "criticalSuccess" && outcome !== "criticalFailure") {
+    return;
+  }
+
+  const critPlayedFlag = MAESTRO.DEFAULT_CONFIG.Misc.flagNames.critSoundPlayed;
+  if (message.getFlag(MAESTRO.MODULE_NAME, critPlayedFlag)) {
+    if (debugLogging) {
+      console.debug("Maestro_pf2e | Crit skip: already played for message", message?.id);
+    }
+    return;
+  }
+
   // Get the sounds
   const criticalSuccessFailureTracks = game.settings.get(
     MAESTRO.MODULE_NAME,
@@ -545,7 +562,16 @@ function playCriticalSuccessFailure(message) {
         isRandom: criticalSuccessSound === "random-track"
       });
     }
-    Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist, {repeat: false});
+    try {
+      await message.setFlag(MAESTRO.MODULE_NAME, critPlayedFlag, true);
+      await Playback.playTrack(criticalSuccessSound, criticalSuccessPlaylist, {
+        repeat: false,
+        duckOthers: true
+      });
+    } catch (err) {
+      await message.unsetFlag(MAESTRO.MODULE_NAME, critPlayedFlag).catch(() => {});
+      console.error("Maestro_pf2e | Crit success playback failed", err);
+    }
     return;
   }
 
@@ -558,7 +584,16 @@ function playCriticalSuccessFailure(message) {
         isRandom: criticalFailureSound === "random-track"
       });
     }
-    Playback.playTrack(criticalFailureSound, criticalFailurePlaylist, {repeat: false});
+    try {
+      await message.setFlag(MAESTRO.MODULE_NAME, critPlayedFlag, true);
+      await Playback.playTrack(criticalFailureSound, criticalFailurePlaylist, {
+        repeat: false,
+        duckOthers: true
+      });
+    } catch (err) {
+      await message.unsetFlag(MAESTRO.MODULE_NAME, critPlayedFlag).catch(() => {});
+      console.error("Maestro_pf2e | Crit failure playback failed", err);
+    }
   }
 }
 
