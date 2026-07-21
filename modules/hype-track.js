@@ -49,7 +49,10 @@ export default class HypeTrack {
     }
 
     /**
-     * Checks for the existence of the Hype Track actor flag, then plays the track
+     * Checks for the existence of the Hype Track actor flag, then plays the track.
+     * When "Pause Other Playlist Sounds" is enabled, other playlist audio is paused and
+     * resumed from its paused position after the hype track finishes (or immediately if
+     * the combatant has no hype track).
      * @param {Object} combat - the combat instance
      * @param {*} update - the update data
      */
@@ -169,13 +172,14 @@ export default class HypeTrack {
             return;
         }
 
+        // Keep previously paused sounds across consecutive hype turns; pauseAll only sees playing sounds
         if (pauseOthers) {
-            // pause active playlists
-            this.pausedSounds = Playback.pauseAll() || [];
+            if (!this.pausedSounds?.length) {
+                this.pausedSounds = Playback.pauseAll() || [];
+            }
         } else {
             this.pausedSounds = [];
         }
-        
 
         // Find the hype track's playlist sound and play it
         const hypeTrackSound = this.playlist.sounds?.get(hypeTrack) ?? this.playlist.sounds?.contents?.find(s => s._id === hypeTrack);
@@ -199,13 +203,21 @@ export default class HypeTrack {
                 console.log("Maestro_pf2e | Hype: playHype completed");
             }
         }
-        
-        const soundInstance = hypeTrackSound?.sound;
-        if (!soundInstance) {
-            if (this.pausedSounds.length) {
-                Playback.resumeSounds(this.pausedSounds);
-                this.pausedSounds = [];
+
+        if (!this.pausedSounds?.length) {
+            if (debugLogging) {
+                console.log("Maestro_pf2e | Hype: no paused sounds to resume, track should be playing");
             }
+            return;
+        }
+
+        const playlistSoundDoc = this.playlist.sounds?.get(hypeTrack)
+            ?? this.playlist.sounds?.contents?.find(s => s._id === hypeTrack)
+            ?? hypeTrackSound;
+
+        if (!playlistSoundDoc?.sound) {
+            Playback.resumeSounds(this.pausedSounds);
+            this.pausedSounds = [];
             if (debugLogging) {
                 console.log("Maestro_pf2e | Hype skip: sound instance missing", {
                     trackId: hypeTrack,
@@ -215,7 +227,7 @@ export default class HypeTrack {
             }
             return;
         }
-        
+
         if (debugLogging) {
             console.log("Maestro_pf2e | Hype: sound instance found, setting up resume callback", {
                 pausedSoundsLength: this.pausedSounds?.length ?? 0,
@@ -223,25 +235,10 @@ export default class HypeTrack {
             });
         }
 
-        if (!this.pausedSounds || !this.pausedSounds.length) {
-            if (debugLogging) {
-                console.log("Maestro_pf2e | Hype: no paused sounds to resume, track should be playing");
-            }
-            return;
-        }
-
-        // Defer the resumption of paused sounds after hype track finishes
-        if (typeof soundInstance.once === "function") {
-            soundInstance.once("end", () => {
-                Playback.resumeSounds(this.pausedSounds);
-                this.pausedSounds = [];
-            });
-        } else {
-            soundInstance.on("end", () => {
-                Playback.resumeSounds(this.pausedSounds);
-                this.pausedSounds = [];
-            });
-        }
+        // Resume background music from its paused position when the hype track ends
+        Playback.attachResumeWhenSoundEnds(playlistSoundDoc, this.pausedSounds, () => {
+            this.pausedSounds = [];
+        });
 
         if (debugLogging) {
             console.debug("Maestro_pf2e | Hype track started", {
@@ -390,8 +387,13 @@ export default class HypeTrack {
     }
 
     /**
-     * Plays a hype track for the provided actor
-     * @param {*} actor 
+     * Plays a hype track for the provided actor.
+     * When pauseOthers is true, other playlist sounds are paused and resumed from their
+     * paused position after the hype track ends.
+     * @param {*} actor
+     * @param {Object} [options]
+     * @param {boolean} [options.warn=true] - show warnings when actor/track/playlist is missing
+     * @param {boolean} [options.pauseOthers=false] - pause other playing playlist sounds until hype ends
      */
     async playHype(actor, {warn=true, pauseOthers=false}={}) {
         if (typeof(actor) === "string") {
@@ -446,17 +448,9 @@ export default class HypeTrack {
         }
 
         if (pauseOthers && pausedSounds.length) {
-            const playlistSound = playlist.sounds?.get(playedTrack._id) ?? playlist.sounds?.contents?.find(s => s._id === playedTrack._id);
-            const soundInstance = playlistSound?.sound;
-            if (!soundInstance) {
-                return playedTrack;
-            }
-
-            if (typeof soundInstance.once === "function") {
-                soundInstance.once("end", () => Playback.resumeSounds(pausedSounds));
-            } else {
-                soundInstance.on("end", () => Playback.resumeSounds(pausedSounds));
-            }
+            const playlistSound = playlist.sounds?.get(playedTrack._id)
+                ?? playlist.sounds?.contents?.find(s => s._id === playedTrack._id || s.id === playedTrack._id);
+            Playback.attachResumeWhenSoundEnds(playlistSound, pausedSounds);
         }
 
         return playedTrack;

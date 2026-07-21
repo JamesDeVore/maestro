@@ -30,24 +30,45 @@ export function getPlaylistSound(trackId) {
 
 /**
  * When a playlist sound finishes, resume previously paused sounds (used after duckOthers playback).
- * @param {*} pausedSounds - playlist sound documents previously paused by pauseAll
+ * Foundry Sound uses EventEmitter (`addEventListener`); older Howler wrappers used `.once` / `.on`.
  * @param {*} playlistSoundDoc - PlaylistSound document whose sound instance should emit "end"
+ * @param {Array} pausedSounds - playlist sound documents previously paused by pauseAll
+ * @param {Function} [onResume] - optional callback invoked after resumeSounds runs
  */
-function attachResumeWhenSoundEnds(playlistSoundDoc, pausedSounds) {
+export function attachResumeWhenSoundEnds(playlistSoundDoc, pausedSounds, onResume) {
     if (!pausedSounds?.length) {
         return;
     }
-    const resume = () => resumeSounds(pausedSounds);
+    let resumed = false;
+    const resume = () => {
+        if (resumed) {
+            return;
+        }
+        resumed = true;
+        resumeSounds(pausedSounds);
+        onResume?.();
+    };
     const soundInstance = playlistSoundDoc?.sound;
     if (!soundInstance) {
         resume();
         return;
     }
+    // Foundry V12+ Sound: EventEmitter with addEventListener only
+    if (typeof soundInstance.addEventListener === "function") {
+        soundInstance.addEventListener("end", resume, { once: true });
+        return;
+    }
+    // Legacy Howler-style APIs
     if (typeof soundInstance.once === "function") {
         soundInstance.once("end", resume);
-    } else {
-        soundInstance.on("end", resume);
+        return;
     }
+    if (typeof soundInstance.on === "function") {
+        soundInstance.on("end", resume);
+        return;
+    }
+    // Cannot attach a listener; resume immediately so audio is not left paused
+    resume();
 }
 
 /**
