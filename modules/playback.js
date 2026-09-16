@@ -1,4 +1,5 @@
 import * as MAESTRO from "./config.js";
+import { pauseSoundInstance, playSoundInstance } from "./foundry-compat.js";
 
 
 /**
@@ -170,7 +171,7 @@ export function playSoundByName(name, {playlist=null}={}) {
         let {playlist, sound} = findPlaylistSound(name) || {};
         
         if (!playlist) {
-            ui.warn(game.i18n.localize("PLAYBACK.PlaySoundByName.NoPlaylist"));
+            ui.notifications.warn(game.i18n.localize("PLAYBACK.PlaySoundByName.NoPlaylist"));
             return;
         }
     }
@@ -212,8 +213,7 @@ export function pauseSounds(sounds) {
         if (!playlistSound) {
             continue;
         }
-        const soundInstance = playlistSound.sound;
-        soundInstance?.pause();
+        pauseSoundInstance(playlistSound.sound);
         pausedSounds.push(playlistSound);
     }
 
@@ -232,8 +232,7 @@ export function resumeSounds(sounds) {
     const resumedSounds = [];
 
     for (const sound of sounds) {
-        const soundInstance = sound.sound;
-        soundInstance?.play();
+        playSoundInstance(sound.sound);
         resumedSounds.push(sound);
     }
 

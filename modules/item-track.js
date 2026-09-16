@@ -1,5 +1,7 @@
 import * as MAESTRO from "./config.js";
 import * as Playback from "./playback.js";
+import { createPlaylist, getActorItem, getSheetDocument, insertHeaderControl, renderApplication, toElement } from "./foundry-compat.js";
+import { createControlButton, hasControl, MaestroForm, PlaylistTrackFields } from "./forms.js";
 
 /**
  * Attach a track to an item that plays when the item is rolled
@@ -36,7 +38,7 @@ export default class ItemTrack {
         if (!create) {
             return;
         }
-        return await Playlist.create({"name": MAESTRO.DEFAULT_CONFIG.ItemTrack.playlistName});
+        return await createPlaylist({ name: MAESTRO.DEFAULT_CONFIG.ItemTrack.playlistName });
     }
 
     /**
@@ -45,32 +47,39 @@ export default class ItemTrack {
      * @param {Object} html - the jquery object
      * @param {Object} data - the data in the message update
      */
-    async chatMessageHandler(message, html, data) {
+    /**
+     * Play an item track when a chat card for that item is rendered.
+     * @param {foundry.documents.ChatMessage} message
+     * @param {HTMLElement|JQuery} html
+     * @param {object} [_data]
+     */
+    async chatMessageHandler(message, html, _data) {
         const enabled = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.ItemTrack.enable);
         if (!enabled || !game.user.isGM) {
             return;
         }
 
-        const itemCard = html.find("[data-item-id]");
+        const root = toElement(html);
+        const itemCard = root?.querySelector("[data-item-id]");
         const trackPlayed = message.getFlag(MAESTRO.MODULE_NAME, MAESTRO.DEFAULT_CONFIG.ItemTrack.flagNames.played);
         
-        if(!itemCard || itemCard.length === 0 || trackPlayed) {
+        if(!itemCard || trackPlayed) {
             return;
         }
         
         let item;
-        const itemId = itemCard.attr("data-item-id");
-        const actorId = itemCard.attr("data-actor-id");
-        const sceneTokenId = itemCard.attr("data-token-id");
+        const itemId = itemCard.getAttribute("data-item-id");
+        const actorId = itemCard.getAttribute("data-actor-id");
+        const sceneTokenId = itemCard.getAttribute("data-token-id");
 
         if (sceneTokenId) {
-            const tokenId = sceneTokenId.split(".")[1];
+            const tokenId = sceneTokenId.includes(".") ? sceneTokenId.split(".").pop() : sceneTokenId;
             const token = canvas.tokens.get(tokenId);
-            item = token.actor.getOwnedItem(itemId);
-        } else if (!sceneTokenId && actorId) {
-            item = await game.actors.get(actorId).getOwnedItem(itemId);
+            item = getActorItem(token?.actor, itemId);
+        } else if (actorId) {
+            item = getActorItem(game.actors.get(actorId), itemId);
         } else {
-            item = await game.items.get(itemId);
+            item = game.items.get(itemId);
         }
 
         const flags = await this.getItemFlags(item);
@@ -107,8 +116,16 @@ export default class ItemTrack {
      * @param {Object} item - the item to get flags from
      * @returns {Promise} flags - an object containing the flags
      */
+    /**
+     * Gets the Item Track flags on an Item.
+     * @param {Item|null|undefined} item
+     * @returns {Promise<object|null>}
+     */
     async getItemFlags(item) {
-        return item.data.flags[MAESTRO.MODULE_NAME];
+        if (!item) {
+            return null;
+        }
+        return item.flags?.[MAESTRO.MODULE_NAME] ?? null;
     }
 
     /**
@@ -131,67 +148,67 @@ export default class ItemTrack {
      * @param {Object} html 
      * @param {Object} data 
      */
-    async _addItemTrackButton (app, html, data) {
+    /**
+     * Adds an Item Track button to an item sheet header.
+     * @param {Application} app
+     * @param {HTMLElement|JQuery} html
+     * @param {object} [_data]
+     */
+    async _addItemTrackButton (app, html, _data) {
         const enabled = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.ItemTrack.enable);
-        if (!enabled) {
+        if (!enabled || app.isEditable === false) {
             return;
         }
 
-        /**
-         * Item Track Button html literal
-         * @todo replace with a template instead
-         */
-        const itemTrackButton = $(
-            `<a class="${MAESTRO.DEFAULT_CONFIG.ItemTrack.name}" title="${MAESTRO.DEFAULT_CONFIG.ItemTrack.aTitle}">
-                <i class="${MAESTRO.DEFAULT_CONFIG.ItemTrack.buttonIcon}"></i>
-                <span> ${MAESTRO.DEFAULT_CONFIG.ItemTrack.buttonText}</span>
-            </a>`
-        );
-        
-        if (html.find(`.${MAESTRO.DEFAULT_CONFIG.ItemTrack.name}`).length > 0 || !app.isEditable) {
+        if (hasControl(html, MAESTRO.DEFAULT_CONFIG.ItemTrack.name)) {
             return;
         }
 
-        /**
-         * Finds the header and the close button
-         */
-        const windowHeader = html.find(".window-header");
-        const windowCloseBtn = windowHeader.find(".close");
-    
-        /**
-         * Create an instance of the hypeButton before the close button
-         */
-        windowCloseBtn.before(itemTrackButton);
-    
-        /**
-         * Register a click listener that opens the Hype Track form
-         */
-        itemTrackButton.click(async ev => {
+        const itemTrackButton = createControlButton({
+            className: `${MAESTRO.DEFAULT_CONFIG.ItemTrack.name} header-control`,
+            title: MAESTRO.DEFAULT_CONFIG.ItemTrack.aTitle,
+            icon: MAESTRO.DEFAULT_CONFIG.ItemTrack.buttonIcon,
+            text: MAESTRO.DEFAULT_CONFIG.ItemTrack.buttonText,
+            tag: "a"
+        });
 
-            let item;
-            
-            //Scenario 1 - owned item 
-            if (app.entity.isOwned) {
-                const itemId = app.entity.data._id;
-                const actor = app.entity.actor;
+        if (!insertHeaderControl([toElement(html), app?.element], itemTrackButton)) {
+            return;
+        }
 
-                if (actor.isToken) {
-                    item = canvas.tokens.get(actor.token.id).actor.getOwnedItem(itemId);
-                } else {
-                    item = game.actors.get(actor.id).getOwnedItem(itemId);
-                }
-
-            //Scenario 2 - world item
-            } else {
-                if (app.entity.id) {
-                    item = app.entity;
-                }
-            }
-            
+        itemTrackButton.addEventListener("click", async (event) => {
+            event.preventDefault();
+            const item = getSheetDocument(app);
             const flags = await this.getItemFlags(item);
-            const track = flags ? flags.track : "";
-            const playlist = flags ? flags.playlist : "";
-            this._openTrackForm(item, track, playlist, {closeOnSubmit: true});
+            this._openTrackForm(item, flags?.track ?? "", flags?.playlist ?? "");
+        });
+    }
+
+    /**
+     * Add an ApplicationV2 header-control entry for Item Track.
+     * @param {Application} app
+     * @param {Array<object>} controls
+     */
+    addItemHeaderControl(app, controls) {
+        const item = getSheetDocument(app);
+        const enabled = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.ItemTrack.enable);
+        if (!enabled || !item || item.documentName !== "Item" || app.isEditable === false) {
+            return;
+        }
+        if (!game.user.isGM) {
+            return;
+        }
+        if (controls.some((control) => control.action === "maestroItemTrack")) {
+            return;
+        }
+        controls.push({
+            icon: MAESTRO.DEFAULT_CONFIG.ItemTrack.buttonIcon,
+            label: MAESTRO.DEFAULT_CONFIG.ItemTrack.aTitle,
+            action: "maestroItemTrack",
+            onClick: async () => {
+                const flags = await this.getItemFlags(item);
+                this._openTrackForm(item, flags?.track ?? "", flags?.playlist ?? "");
+            }
         });
     }
     
@@ -201,13 +218,20 @@ export default class ItemTrack {
      * @param {String} track - any existing track
      * @param {Object} options - form options
      */
-    _openTrackForm(item, track, playlist, options){
-        const data = {
-            "currentTrack": track,
-            "currentPlaylist": playlist,
-            "playlists": game.playlists.contents
-        }
-        new ItemTrackForm(item, data, options).render(true);
+    /**
+     * Builds data object and opens the Item Track form.
+     * @param {Item} item
+     * @param {string} track
+     * @param {string} playlist
+     */
+    _openTrackForm(item, track, playlist){
+        renderApplication(new ItemTrackForm({
+            item,
+            data: {
+                currentTrack: track,
+                currentPlaylist: playlist
+            }
+        }));
     }    
 
     /**
@@ -224,66 +248,82 @@ export default class ItemTrack {
 }
 
 /**
- * A FormApplication for managing the item's track
+ * ApplicationV2 form for managing an item's track.
  */
-class ItemTrackForm extends FormApplication {
-    constructor(item, data, options){
-        super(data, options);
-        this.item = item;
-        this.data = data;
-    }
-    
-    /**
-     * Default Options for this FormApplication
-     */
-    static get defaultOptions() {
-        return foundry.utils.mergeObject(super.defaultOptions, {
-            id: "item-track-form",
+class ItemTrackForm extends MaestroForm {
+    static DEFAULT_OPTIONS = {
+        id: "item-track-form",
+        window: {
             title: MAESTRO.DEFAULT_CONFIG.ItemTrack.aTitle,
-            template: MAESTRO.DEFAULT_CONFIG.ItemTrack.templatePath,
-            classes: ["sheet"],
-            width: 500
+            icon: "fas fa-music"
+        }
+    };
+
+    /**
+     * @param {object} [options]
+     * @param {Item} [options.item]
+     * @param {{currentPlaylist?: string, currentTrack?: string}} [options.data]
+     */
+    constructor(options = {}) {
+        super(options);
+        this.item = options.item ?? null;
+        this.data = options.data ?? { currentPlaylist: "", currentTrack: "" };
+    }
+
+    /**
+     * @returns {object}
+     */
+    async _prepareContext() {
+        return {
+            playlist: this._getFieldValue("playlist") || this.data.currentPlaylist || "",
+            track: this._getFieldValue("track") || this.data.currentTrack || ""
+        };
+    }
+
+    /**
+     * @param {object} context
+     * @returns {string}
+     */
+    _buildFormHTML(context) {
+        return `
+            ${PlaylistTrackFields.render({
+                playlistName: "playlist",
+                trackName: "track",
+                playlistLabel: "Item Playlist",
+                trackLabel: "Item Track",
+                playlistNotes: game.i18n.localize("MAESTRO.ITEM-TRACK.FormPlaylistNotes"),
+                trackNotes: game.i18n.localize("MAESTRO.ITEM-TRACK.FormTrackNotes"),
+                playlistValue: context.playlist,
+                trackValue: context.track
+            })}
+            <button type="submit" name="submit">
+                <i class="far fa-save"></i> ${game.i18n.localize("MAESTRO.FORM.SaveTrack")}
+            </button>
+        `;
+    }
+
+    /**
+     * Re-render track options when the playlist changes.
+     * @param {object} context
+     * @param {object} options
+     */
+    async _onRender(context, options) {
+        await super._onRender?.(context, options);
+        this.element.querySelector("select[name='playlist']")?.addEventListener("change", (event) => {
+            this.data.currentPlaylist = event.target.value;
+            this.data.currentTrack = "";
+            this.render();
         });
-    } 
-
-    /**
-     * Provide data to the handlebars template
-     */
-    async getData() {
-        const data = {
-            playlist: this.data.currentPlaylist,
-            playlists: this.data.playlists,
-            playlistTracks: await Playback.getPlaylistSounds(this.data.currentPlaylist) || [],
-            track: this.data.currentTrack
-        }
-        return data;
     }
 
     /**
-     * Executes on form submission.
-     * Set the Hype Track flag on the specified Actor
-     * @param {Object} event - the form submission event
-     * @param {Object} formData - the form data
+     * Save playlist and track flags on the item.
+     * @param {Event} _event
+     * @param {object} formData
      */
-    _updateObject(event, formData) {
-        game.maestro.itemTrack.setItemFlags(this.item, formData.playlist, formData.track)  
+    async _onSubmitForm(_event, formData) {
+        this.data.currentPlaylist = formData.playlist || "";
+        this.data.currentTrack = formData.track || "";
+        await game.maestro.itemTrack.setItemFlags(this.item, this.data.currentPlaylist, this.data.currentTrack);
     }
-
-    /**
-     * Activates listeners on the form html
-     * @param {*} html 
-     */
-    activateListeners(html) {
-        super.activateListeners(html);
-
-        const playlistSelect = html.find(".playlist-select");
-
-        if (playlistSelect.length > 0) {
-            playlistSelect.on("change", event => {
-                this.data.currentPlaylist = event.target.value;
-                this.render();
-            });
-        }
-    }
-
 }

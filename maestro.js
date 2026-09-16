@@ -189,6 +189,7 @@ export default class Conductor {
         // Sheet/App Render Hooks
         Conductor._hookOnRenderActorSheet();
         Conductor._hookOnRenderItemSheet();
+        Conductor._hookOnGetHeaderControls();
         Conductor._hookOnRenderChatMessage();
         Conductor._hookOnCreateChatMessage();
 
@@ -221,20 +222,20 @@ export default class Conductor {
     }
 
     /**
-     * PreUpdate Playlist Sound Hook
+     * PreUpdate PlaylistSound hook — Foundry v10+ passes the sound document first.
      */
     static _hookOnPreUpdatePlaylistSound() {
-        Hooks.on("preUpdatePlaylistSound", (playlist, sound, update, options, userId) => {
-            Misc._onPreUpdatePlaylistSound(playlist, update);
+        Hooks.on("preUpdatePlaylistSound", (sound, changed) => {
+            Misc._onPreUpdatePlaylistSound(sound, changed);
         });
     }
 
     /**
-     * PreCreate Chat Message Hook
+     * PreCreate Chat Message hook — suppress the dice sound when that setting is enabled.
      */
     static _hookOnPreCreateChatMessage() {
-        Hooks.on("preCreateChatMessage", (message, options, userId) => {
-            Misc._onPreCreateChatMessage(message, options);
+        Hooks.on("preCreateChatMessage", (message, data) => {
+            Misc._onPreCreateChatMessage(message, data);
         });
     }
 
@@ -318,9 +319,27 @@ export default class Conductor {
     /**
      * RenderChatMessage Hook
      */
+    /**
+     * Chat-card render hook. Foundry v13+ uses renderChatMessageHTML (HTMLElement);
+     * renderChatMessage is kept as a fallback for older clients.
+     */
     static _hookOnRenderChatMessage() {
-        Hooks.on("renderChatMessage", (message, html, data) => {
+        const handler = (message, html, data) => {
             game.maestro.itemTrack.chatMessageHandler(message, html, data);
+        };
+        Hooks.on("renderChatMessageHTML", handler);
+        Hooks.on("renderChatMessage", handler);
+    }
+
+    /**
+     * ApplicationV2 header-control hook for actor/item sheets that no longer expose a V1 header.
+     */
+    static _hookOnGetHeaderControls() {
+        Hooks.on("getHeaderControlsApplicationV2", (app, controls) => {
+            game.maestro.hypeTrack?.addHypeHeaderControl(app, controls);
+            if (game.user.isGM) {
+                game.maestro.itemTrack?.addItemHeaderControl(app, controls);
+            }
         });
     }
 

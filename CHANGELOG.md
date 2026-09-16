@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.10.0] - 2026-09-15
+> Foundry VTT v14 compatibility
+
+- Updated module compatibility to Foundry v14
+- Converted Maestro config windows from `FormApplication` to ApplicationV2 (the Handlebars `{{#select}}` helper was removed in v14)
+- Restored Combat Track and Playlist Loop controls for the ApplicationV2 sidebar HTML
+- Restored actor/item sheet header buttons for both Application V1 sheets and ApplicationV2 header controls
+- Replaced removed document APIs (`item.data`, `getOwnedItem`, `app.entity`, global `Playlist.create`)
+- Item tracks now use `renderChatMessageHTML` and resolve items from current actor/item collections
+- Playlist loop now listens to the modern `preUpdatePlaylistSound` signature
+
 ## Known Issues
 1. ~~Critical Sounds do not play when roll made with advantage/disadvantage~~ (resolved in 0.9.0)
 2. Critical Sounds ~~do~~ may not play with modules such as BetterRolls5e (possibly resolved in 0.7.6)

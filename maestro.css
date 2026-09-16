@@ -4,3 +4,30 @@
   font-size: 16px;
   border-bottom: 1px solid #000;
 }
+
+.maestro-form .maestro-form-body,
+.maestro-form .window-content {
+  padding: 0.5rem;
+}
+
+.maestro-form button[type="submit"] {
+  margin-top: 0.5rem;
+}
+
+button.maestro-playlist-loop.inactive,
+a.maestro-playlist-loop.inactive {
+  opacity: 0.45;
+}
+
+button.maestro-playlist-loop.disabled,
+a.maestro-playlist-loop.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+a.hype-track,
+a.item-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}

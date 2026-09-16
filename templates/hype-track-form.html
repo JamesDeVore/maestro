@@ -1,35 +1,3 @@
-<form autocomplete="off" onsubmit="event.preventDefault();">
-    <div class="form-group">
-        <label>{{localize "MAESTRO.HYPE-TRACK.Form.PlaylistLabel"}}</label>
-        <select name="playlist" class="playlist-select" title="{{localize "MAESTRO.FORM.PlaylistSelection"}}" default="">
-            {{#select playlist}}
-            <option value="">{{localize "MAESTRO.FORM.SelectNone"}}</option>
-            {{#each playlists}}
-            <option value="{{this.value}}">{{this.label}}</option>
-            {{/each}}
-            {{/select}}
-        </select>
-        <p class="notes">{{localize "MAESTRO.HYPE-TRACK.FormPlaylistNotes"}}</p> 
-    </div>
-
-    <div class="form-group">
-        <label>{{localize "MAESTRO.HYPE-TRACK.Form.TrackLabel"}}</label>
-        <select name="track" class="track-select" title="{{localize "MAESTRO.HYPE-TRACK.FormTrackSelection"}}">
-            <option value="">{{localize "MAESTRO.HYPE-TRACK.FormSelectNone"}}</option>
-            {{#if playlistSounds}}
-            <option value="random-track">{{localize "MAESTRO.FORM.PlayRandom"}}</option>
-            <option value="play-all">{{localize "MAESTRO.FORM.PlayAll"}}</option>
-            {{/if}}
-            {{#select track}}
-            {{#each playlistSounds}}
-            <option value="{{this.value}}">{{this.label}}</option>
-            {{/each}}
-            {{/select}}
-        </select>
-        <p class="notes">{{localize "MAESTRO.HYPE-TRACK.FormTrackNotes"}}</p> 
-    </div>
-
-    <button type="submit" name="submit">
-        <i class="far fa-save"></i> {{localize "Save Changes"}}
-    </button>
+<form autocomplete="off">
+    <p class="notes">This template is unused. Hype Track now renders through ApplicationV2.</p>
 </form>

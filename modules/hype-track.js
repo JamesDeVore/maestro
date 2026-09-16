@@ -1,5 +1,7 @@
 import * as MAESTRO from "./config.js";
 import * as Playback from "./playback.js";
+import { createPlaylist, getSheetDocument, insertHeaderControl, renderApplication, toElement } from "./foundry-compat.js";
+import { createControlButton, hasControl, MaestroForm, PlaylistTrackFields } from "./forms.js";
 
 export default class HypeTrack {
     constructor() {
@@ -42,7 +44,7 @@ export default class HypeTrack {
      */
     async _createHypeTracksPlaylist(create) {
         if(create) {
-            return await Playlist.create({"name": MAESTRO.DEFAULT_CONFIG.HypeTrack.playlistName});
+            return await createPlaylist({ name: MAESTRO.DEFAULT_CONFIG.HypeTrack.playlistName });
         } else {
             return;
         }
@@ -284,13 +286,13 @@ export default class HypeTrack {
     }
     
     /**
-     * Adds a button to the Actor sheet to open the Hype Track form
-     * @param {Object} app 
-     * @param {Object} html 
-     * @param {Object} data 
+     * Adds a Hype button to an actor sheet header (Application V1 or V2).
+     * @param {Application} app
+     * @param {HTMLElement|JQuery} html
+     * @param {object} [_data]
      */
-    async _addHypeButton (app, html, data) {
-        const actor = app.actor ?? app.object ?? app.document ?? app.entity;
+    async _addHypeButton (app, html, _data) {
+        const actor = getSheetDocument(app);
         const debugLogging = game.settings.get(
             MAESTRO.MODULE_NAME,
             MAESTRO.SETTINGS_KEYS.Misc.debugLogging
@@ -319,39 +321,26 @@ export default class HypeTrack {
             return;
         }
 
-        /**
-         * Hype Button html literal
-         * @todo replace with a template instead
-         */
-        const hypeButton = $(
-            `<a class="${MAESTRO.DEFAULT_CONFIG.HypeTrack.name}" title="${MAESTRO.DEFAULT_CONFIG.HypeTrack.aTitle}">
-                <i class="${MAESTRO.DEFAULT_CONFIG.HypeTrack.buttonIcon}"></i>
-                <span> ${MAESTRO.DEFAULT_CONFIG.HypeTrack.buttonText}</span>
-            </a>`
-        );
-        
-        const $html = html instanceof HTMLElement ? $(html) : html;
-
-        if ($html.find(`.${MAESTRO.DEFAULT_CONFIG.HypeTrack.name}`).length > 0) {
+        if (hasControl(html, MAESTRO.DEFAULT_CONFIG.HypeTrack.name)) {
             if (debugLogging) {
                 console.debug("Maestro_pf2e | Hype button exists, skipping");
             }
             return;
         }
 
-        /**
-         * Finds the header and the close button
-         */
-        const windowHeader = $html.find(".window-header");
-        const windowCloseBtn = windowHeader.find(".close, .header-button.close");
-    
-        /**
-         * Create an instance of the hypeButton before the close button
-         */
-        if (windowCloseBtn.length) {
-            windowCloseBtn.first().before(hypeButton);
-        } else {
-            windowHeader.append(hypeButton);
+        const hypeButton = createControlButton({
+            className: `${MAESTRO.DEFAULT_CONFIG.HypeTrack.name} header-control`,
+            title: MAESTRO.DEFAULT_CONFIG.HypeTrack.aTitle,
+            icon: MAESTRO.DEFAULT_CONFIG.HypeTrack.buttonIcon,
+            text: MAESTRO.DEFAULT_CONFIG.HypeTrack.buttonText,
+            tag: "a"
+        });
+
+        if (!insertHeaderControl([toElement(html), app?.element], hypeButton)) {
+            if (debugLogging) {
+                console.debug("Maestro_pf2e | Hype button skip: no window header");
+            }
+            return;
         }
 
         if (debugLogging) {
@@ -360,13 +349,38 @@ export default class HypeTrack {
                 actorName: actor?.name
             });
         }
-    
-        /**
-         * Register a click listener that opens the Hype Track form
-         */
-        hypeButton.click(ev => {
+
+        hypeButton.addEventListener("click", (event) => {
+            event.preventDefault();
             const actorTrack = this._getActorHypeTrack(actor);
-            this._openTrackForm(actor, actorTrack, {closeOnSubmit: true});
+            this._openTrackForm(actor, actorTrack);
+        });
+    }
+
+    /**
+     * Add an ApplicationV2 header-control entry for Hype Track.
+     * @param {Application} app
+     * @param {Array<object>} controls
+     */
+    addHypeHeaderControl(app, controls) {
+        const actor = getSheetDocument(app);
+        const enabled = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.HypeTrack.enable);
+        if (!enabled || !actor || actor.documentName !== "Actor") {
+            return;
+        }
+        if (!game.user.isGM && !actor.isOwner) {
+            return;
+        }
+        if (controls.some((control) => control.action === "maestroHypeTrack")) {
+            return;
+        }
+        controls.push({
+            icon: MAESTRO.DEFAULT_CONFIG.HypeTrack.buttonIcon,
+            label: MAESTRO.DEFAULT_CONFIG.HypeTrack.aTitle,
+            action: "maestroHypeTrack",
+            onClick: () => {
+                this._openTrackForm(actor, this._getActorHypeTrack(actor));
+            }
         });
     }
     
@@ -376,14 +390,20 @@ export default class HypeTrack {
      * @param {Object} track  any existing track for this actor
      * @param {Object} options  form options
      */
-    _openTrackForm(actor, track, options){
-        // Get playlist from actor flag, or fall back to default playlist
+    /**
+     * Opens the Hype Track form.
+     * @param {Actor} actor
+     * @param {string} track
+     */
+    _openTrackForm(actor, track){
         const actorPlaylist = actor.getFlag(MAESTRO.MODULE_NAME, MAESTRO.DEFAULT_CONFIG.HypeTrack.flagNames.playlist) || this.playlist?.id || "";
-        const data = {
-            "track": track || "",
-            "playlist": actorPlaylist
-        }
-        new HypeTrackActorForm(actor, data, options).render(true);
+        renderApplication(new HypeTrackActorForm({
+            actor,
+            data: {
+                track: track || "",
+                playlist: actorPlaylist
+            }
+        }));
     }
 
     /**
@@ -458,173 +478,94 @@ export default class HypeTrack {
 }
 
 /**
- * A FormApplication for setting the Actor's Hype Track
+ * ApplicationV2 form for setting an Actor's Hype Track.
  */
-class HypeTrackActorForm extends FormApplication {
-    constructor(actor, data, options){
-        super(data, options);
-        this.actor = actor;
-        this.data = data;
-    }
-    
-    /**
-     * Default Options for this FormApplication
-     */
-    static get defaultOptions() {
-        return foundry.utils.mergeObject(super.defaultOptions, {
-            id: "hype-track-form",
+class HypeTrackActorForm extends MaestroForm {
+    static DEFAULT_OPTIONS = {
+        id: "hype-track-form",
+        window: {
             title: MAESTRO.DEFAULT_CONFIG.HypeTrack.aTitle,
-            classes: ["sheet"],
-            width: 500
+            icon: "fas fa-music"
+        }
+    };
+
+    /**
+     * @param {object} [options]
+     * @param {Actor} [options.actor]
+     * @param {{playlist?: string, track?: string}} [options.data]
+     */
+    constructor(options = {}) {
+        super(options);
+        this.actor = options.actor ?? null;
+        this.data = options.data ?? { playlist: "", track: "" };
+    }
+
+    /**
+     * @returns {object}
+     */
+    async _prepareContext() {
+        return {
+            playlist: this._getFieldValue("playlist") || this.data.playlist || "",
+            track: this._getFieldValue("track") || this.data.track || ""
+        };
+    }
+
+    /**
+     * @param {object} context
+     * @returns {string}
+     */
+    _buildFormHTML(context) {
+        return `
+            ${PlaylistTrackFields.render({
+                playlistName: "playlist",
+                trackName: "track",
+                playlistLabel: game.i18n.localize("MAESTRO.HYPE-TRACK.Form.PlaylistLabel"),
+                trackLabel: game.i18n.localize("MAESTRO.HYPE-TRACK.Form.TrackLabel"),
+                playlistNotes: game.i18n.localize("MAESTRO.HYPE-TRACK.FormPlaylistNotes"),
+                trackNotes: game.i18n.localize("MAESTRO.HYPE-TRACK.FormTrackNotes"),
+                playlistValue: context.playlist,
+                trackValue: context.track
+            })}
+            <button type="submit" name="submit">
+                <i class="far fa-save"></i> ${game.i18n.localize("MAESTRO.HYPE-TRACK.FormSaveTrack")}
+            </button>
+        `;
+    }
+
+    /**
+     * Re-render track options when the playlist changes.
+     * @param {object} context
+     * @param {object} options
+     */
+    async _onRender(context, options) {
+        await super._onRender?.(context, options);
+        this.element.querySelector("select[name='playlist']")?.addEventListener("change", (event) => {
+            this.data.playlist = event.target.value;
+            this.data.track = "";
+            this.render();
         });
     }
 
     /**
-     * Build and return the HTML content directly (no Handlebars template)
+     * Save playlist and track flags on the actor.
+     * @param {Event} _event
+     * @param {object} formData
      */
-    async _renderInner(data) {
-        // Get current form values if form is already rendered (to preserve user selections during re-render)
-        let currentFormValues = {};
-        if (this.element && this.element.length > 0) {
-            const $form = this.element.find("form");
-            if ($form.length > 0) {
-                currentFormValues = {
-                    playlist: $form.find("select[name='playlist']").val() || "",
-                    track: $form.find("select[name='track']").val() || ""
-                };
-            }
-        }
-
-        // Use current form values if available, otherwise use saved data
-        const currentPlaylist = currentFormValues.playlist || this.data.playlist || "";
-        const currentTrack = currentFormValues.track || this.data.track || "";
-
-        // Get playlists
-        const playlists = game.playlists?.contents || [];
-        
-        // Get sounds for selected playlist
-        const selectedPlaylist = currentPlaylist ? playlists.find(p => p.id === currentPlaylist) : null;
-        const playlistSounds = selectedPlaylist?.sounds?.contents || [];
-
-        // Build HTML
-        let html = `<form autocomplete="off" onsubmit="event.preventDefault(); return false;">
-            <div class="form-group">
-                <label>Hype Playlist for this Actor</label>
-                <select name="playlist" class="playlist-select">
-                    <option value="" ${!currentPlaylist ? 'selected="selected"' : ''}>--None--</option>`;
-
-        // Add playlist options
-        for (const playlist of playlists) {
-            const selected = playlist.id === currentPlaylist ? 'selected="selected"' : '';
-            html += `\n                    <option value="${playlist.id}" ${selected}>${playlist.name}</option>`;
-        }
-
-        html += `
-                </select>
-                <p class="notes">Select the playlist that contains the Hype Track/s to play</p>
-            </div>
-
-            <div class="form-group">
-                <label>Track to Play</label>
-                <select name="track" class="track-select">
-                    <option value="" ${!currentTrack ? 'selected="selected"' : ''}>--None--</option>`;
-
-        if (playlistSounds.length > 0) {
-            html += `\n                    <option value="random-track" ${currentTrack === "random-track" ? 'selected="selected"' : ''}>--Play Random Track--</option>`;
-            html += `\n                    <option value="play-all" ${currentTrack === "play-all" ? 'selected="selected"' : ''}>--Play Playlist--</option>`;
-            
-            for (const sound of playlistSounds) {
-                const soundId = sound.id ?? sound._id;
-                const selected = soundId === currentTrack ? 'selected="selected"' : '';
-                html += `\n                    <option value="${soundId}" ${selected}>${sound.name}</option>`;
-            }
-        }
-
-        html += `
-                </select>
-                <p class="notes">Select the track or playback mode to use as this Actor's Hype Track</p>
-            </div>
-
-            <button type="submit" name="submit">
-                <i class="far fa-save"></i> Save Changes
-            </button>
-        </form>`;
-
-        return $(html);
-    }
-
-    /**
-     * Executes on form submission.
-     * Set the Hype Track flag on the specified Actor
-     * @param {Object} event - the form submission event
-     * @param {Object} formData - the form data
-     */
-    async _updateObject(event, formData) {
+    async _onSubmitForm(_event, formData) {
         const debugLogging = game.settings.get(
             MAESTRO.MODULE_NAME,
             MAESTRO.SETTINGS_KEYS.Misc.debugLogging
         );
-        
-        if (debugLogging) {
-            console.log("Maestro_pf2e | Hype form submit", {
-                actorId: this.actor?.id,
-                track: formData.track,
-                playlist: formData.playlist
-            });
-        }
-        
-        // Update this.data to reflect saved values
         this.data = {
             playlist: formData.playlist || "",
             track: formData.track || ""
         };
-        
-        // Set both playlist and track flags on the actor
-        await game.maestro.hypeTrack._setActorHypeTrack(this.actor, formData.playlist, formData.track);
-    }
-    
-    /**
-     * Activate listeners for dynamic playlist/track selection
-     */
-    activateListeners(html) {
-        super.activateListeners(html);
-        const $html = html instanceof jQuery ? html : $(html);
-
-        // Prevent form submission on Enter key or other default behaviors
-        const form = $html.find("form");
-        if (form.length > 0) {
-            form.on("submit", (event) => {
-                event.preventDefault();
-                return false;
+        if (debugLogging) {
+            console.log("Maestro_pf2e | Hype form submit", {
+                actorId: this.actor?.id,
+                ...this.data
             });
         }
-        
-        // Update track options when playlist changes
-        const playlistSelect = $html.find("select[name='playlist']");
-        if (playlistSelect.length > 0) {
-            playlistSelect.on("change", async (event) => {
-                event.preventDefault();
-                this.data.playlist = event.target.value;
-                this.render();
-            });
-        }
-
-        // Handle save button click explicitly
-        const saveButton = $html.find("button[type='submit']");
-        if (saveButton.length > 0) {
-            saveButton.on("click", async (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                
-                // Collect form data directly from select elements
-                const formObject = {
-                    playlist: $html.find("select[name='playlist']").val() || "",
-                    track: $html.find("select[name='track']").val() || ""
-                };
-                
-                await this._updateObject(event, formObject);
-                this.close();
-            });
-        }
+        await game.maestro.hypeTrack._setActorHypeTrack(this.actor, this.data.playlist, this.data.track);
     }
 }

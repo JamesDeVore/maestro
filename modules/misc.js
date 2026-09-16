@@ -1,278 +1,167 @@
 import * as MAESTRO from "./config.js";
 import * as Playback from "./playback.js";
+import { createPlaylist, getDirectoryEntryId, renderApplication, toElement } from "./foundry-compat.js";
+import { MaestroForm, PlaylistTrackFields } from "./forms.js";
 
-export function _onRenderPlaylistDirectory(app, html, data) {
-  // Convert html to jQuery if it's not already
-  const $html = html instanceof jQuery ? html : $(html);
-  _addPlaylistLoopToggle($html);
-  _addMaestroConfig($html);
+/**
+ * Playlist directory render hook — inject loop toggles and the Maestro config button.
+ * @param {Application} _app
+ * @param {HTMLElement|JQuery} html
+ * @param {object} [_data]
+ */
+export function _onRenderPlaylistDirectory(_app, html, _data) {
+  const root = toElement(html);
+  if (!root) {
+    return;
+  }
+  _addPlaylistLoopToggle(root);
+  _addMaestroConfig(root);
 }
 
-function _addMaestroConfig(html) {
-  // Ensure html is a jQuery object
-  const $html = html instanceof jQuery ? html : $(html);
-  const createPlaylistButton = $html.find("button.create-entity");
+/**
+ * Add a Maestro Config button next to the playlist create control.
+ * @param {HTMLElement} root
+ */
+function _addMaestroConfig(root) {
+  if (root.querySelector("button.maestro-config")) {
+    return;
+  }
 
-  const footerFlexDivHtml = `<div class="flexrow"></div>`;
+  const createPlaylistButton = root.querySelector("button.create-entry, button[data-action='createEntry'], button.create-entity");
+  const maestroConfigButton = document.createElement("button");
+  maestroConfigButton.type = "button";
+  maestroConfigButton.className = "maestro-config";
+  maestroConfigButton.innerHTML = `<i class="fas fa-cog"></i> Maestro Config`;
 
-  const maestroConfigButtonHtml = `<button class="maestro-config">
-            <i class="fas fa-cog"></i> Maestro Config
-        </button>`;
+  if (createPlaylistButton) {
+    createPlaylistButton.after(maestroConfigButton);
+  } else {
+    const headerActions = root.querySelector(".header-actions, .directory-footer, footer");
+    if (!headerActions) {
+      return;
+    }
+    headerActions.append(maestroConfigButton);
+  }
 
-  createPlaylistButton.wrap(footerFlexDivHtml);
-  createPlaylistButton.after(maestroConfigButtonHtml);
-
-  const maestroConfigButton = $html.find("button.maestro-config");
-
-  maestroConfigButton.on("click", (event) => {
+  maestroConfigButton.addEventListener("click", (event) => {
     event.preventDefault();
-    const data = game.settings.get(
-      MAESTRO.MODULE_NAME,
-      MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks
-    );
-
-    new MaestroConfigForm(data).render(true);
+    renderApplication(new MaestroConfigForm());
   });
 }
 
-export class MaestroConfigForm extends FormApplication {
-  constructor(data, options) {
-    super(data, options);
-    this.data = data;
+/**
+ * ApplicationV2 settings form for critical success/failure tracks.
+ * Instantiated with no arguments from `game.settings.registerMenu`.
+ */
+export class MaestroConfigForm extends MaestroForm {
+  static DEFAULT_OPTIONS = {
+    id: "maestro-config",
+    window: {
+      title: MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTitle,
+      icon: "fas fa-cog"
+    }
+  };
+
+  /**
+   * @param {object} [options]
+   * @param {object} [options.data]
+   */
+  constructor(options = {}) {
+    super(options);
+    this.data = options.data ?? game.settings.get(
+      MAESTRO.MODULE_NAME,
+      MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks
+    ) ?? {
+      criticalSuccessPlaylist: "",
+      criticalSuccessSound: "",
+      criticalFailurePlaylist: "",
+      criticalFailureSound: ""
+    };
   }
 
   /**
-   * Default Options for this FormApplication
+   * @returns {object}
    */
-  static get defaultOptions() {
-    return foundry.utils.mergeObject(super.defaultOptions, {
-      id: "maestro-config",
-      title: MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTitle,
-      classes: ["sheet"],
-      width: 500,
+  async _prepareContext() {
+    return {
+      criticalSuccessPlaylist: this._getFieldValue("critical-success-playlist") || this.data.criticalSuccessPlaylist || "",
+      criticalSuccessSound: this._getFieldValue("critical-success-sound") || this.data.criticalSuccessSound || "",
+      criticalFailurePlaylist: this._getFieldValue("critical-failure-playlist") || this.data.criticalFailurePlaylist || "",
+      criticalFailureSound: this._getFieldValue("critical-failure-sound") || this.data.criticalFailureSound || ""
+    };
+  }
+
+  /**
+   * @param {object} context
+   * @returns {string}
+   */
+  _buildFormHTML(context) {
+    return `
+      <h2>Critical Success and Failure Tracks</h2>
+      ${PlaylistTrackFields.render({
+        playlistName: "critical-success-playlist",
+        trackName: "critical-success-sound",
+        playlistLabel: "Critical Success Playlist",
+        trackLabel: "Critical Success Sound",
+        playlistNotes: "Select a playlist for Critical Success Tracks",
+        trackNotes: "Select a track/playback mode",
+        playlistValue: context.criticalSuccessPlaylist,
+        trackValue: context.criticalSuccessSound
+      })}
+      ${PlaylistTrackFields.render({
+        playlistName: "critical-failure-playlist",
+        trackName: "critical-failure-sound",
+        playlistLabel: "Critical Failure Playlist",
+        trackLabel: "Critical Failure Sound",
+        playlistNotes: "Select a playlist for Critical Failure Tracks",
+        trackNotes: "Select a track/playback mode",
+        playlistValue: context.criticalFailurePlaylist,
+        trackValue: context.criticalFailureSound
+      })}
+      <button type="submit" name="submit">
+        <i class="far fa-save"></i> ${game.i18n.localize("MAESTRO.FORM.SaveSelections")}
+      </button>
+    `;
+  }
+
+  /**
+   * Refresh sound lists when a playlist select changes.
+   * @param {object} context
+   * @param {object} options
+   */
+  async _onRender(context, options) {
+    await super._onRender?.(context, options);
+    this.element.querySelector("select[name='critical-success-playlist']")?.addEventListener("change", (event) => {
+      this.data.criticalSuccessPlaylist = event.target.value;
+      this.data.criticalSuccessSound = "";
+      this.render();
+    });
+    this.element.querySelector("select[name='critical-failure-playlist']")?.addEventListener("change", (event) => {
+      this.data.criticalFailurePlaylist = event.target.value;
+      this.data.criticalFailureSound = "";
+      this.render();
     });
   }
 
   /**
-   * Build and return the HTML content directly (no Handlebars template)
+   * Persist critical success/failure playlist selections.
+   * @param {Event} _event
+   * @param {object} formData
    */
-  async _renderInner(data) {
-    // Get current form values if form is already rendered (to preserve user selections during re-render)
-    let currentFormValues = {};
-    if (this.element && this.element.length > 0) {
-      const $form = this.element.find("form");
-      if ($form.length > 0) {
-        currentFormValues = {
-          criticalSuccessPlaylist: $form.find("select[name='critical-success-playlist']").val() || "",
-          criticalSuccessSound: $form.find("select[name='critical-success-sound']").val() || "",
-          criticalFailurePlaylist: $form.find("select[name='critical-failure-playlist']").val() || "",
-          criticalFailureSound: $form.find("select[name='critical-failure-sound']").val() || ""
-        };
-      }
-    }
-
-    const criticalSuccessFailureTracks = game.settings.get(
-      MAESTRO.MODULE_NAME,
-      MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks
-    );
-
-    if (!this.data && criticalSuccessFailureTracks) {
-      this.data = criticalSuccessFailureTracks;
-    }
-    
-    // Ensure this.data exists with defaults
-    if (!this.data) {
-      this.data = {
-        criticalSuccessPlaylist: "",
-        criticalSuccessSound: "",
-        criticalFailurePlaylist: "",
-        criticalFailureSound: ""
-      };
-    }
-
-    // Use current form values if available (preserves user input during re-render), otherwise use saved data
-    const currentSuccessPlaylist = currentFormValues.criticalSuccessPlaylist || this.data.criticalSuccessPlaylist || "";
-    const currentFailurePlaylist = currentFormValues.criticalFailurePlaylist || this.data.criticalFailurePlaylist || "";
-    const currentSuccessSound = currentFormValues.criticalSuccessSound || this.data.criticalSuccessSound || "";
-    const currentFailureSound = currentFormValues.criticalFailureSound || this.data.criticalFailureSound || "";
-    
-    // Get playlists
-    const playlistsContents = game.playlists?.contents || [];
-    const playlists = Array.isArray(playlistsContents) ? playlistsContents : [];
-    
-    // Get sounds for selected playlists
-    const criticalSuccessSounds = this.data.criticalSuccessPlaylist && playlists.length > 0
-      ? (Playback.getPlaylistSounds(this.data.criticalSuccessPlaylist) || [])
-      : [];
-    const criticalFailureSounds = this.data.criticalFailurePlaylist && playlists.length > 0
-      ? (Playback.getPlaylistSounds(this.data.criticalFailurePlaylist) || [])
-      : [];
-
-    // Build HTML
-    let html = `<form autocomplete="off" onsubmit="event.preventDefault(); return false;">
-      <h2>Critical Success and Failure Tracks</h2>
-
-      <div class="form-group">
-        <label>Critical Success Playlist</label>
-        <select name="critical-success-playlist" class="playlist-select">
-          <option value="" ${!currentSuccessPlaylist ? 'selected="selected"' : ''}>--None--</option>`;
-
-    // Add playlist options
-    for (const playlist of playlists) {
-      const selected = playlist.id === currentSuccessPlaylist ? 'selected="selected"' : '';
-      html += `\n          <option value="${playlist.id}" ${selected}>${playlist.name}</option>`;
-    }
-
-    html += `
-        </select>
-        <p class="notes">Select a playlist for Critical Success Tracks</p>
-      </div>
-
-      <div class="form-group">
-        <label>Critical Success Sound</label>
-        <select name="critical-success-sound" class="track-select">
-          <option value="" ${!currentSuccessSound ? 'selected="selected"' : ''}>--None--</option>`;
-
-    if (criticalSuccessSounds.length > 0) {
-      html += `\n          <option value="random-track" ${currentSuccessSound === "random-track" ? 'selected="selected"' : ''}>--Play Random Track--</option>`;
-      html += `\n          <option value="play-all" ${currentSuccessSound === "play-all" ? 'selected="selected"' : ''}>--Play Playlist--</option>`;
-      
-      for (const sound of criticalSuccessSounds) {
-        const soundId = sound.id ?? sound._id;
-        const selected = soundId === currentSuccessSound ? 'selected="selected"' : '';
-        html += `\n          <option value="${soundId}" ${selected}>${sound.name}</option>`;
-      }
-    }
-
-    html += `
-        </select>
-        <p class="notes">Select a track/playback mode</p>
-      </div>
-
-      <div class="form-group">
-        <label>Critical Failure Playlist</label>
-        <select name="critical-failure-playlist" class="playlist-select">
-          <option value="" ${!currentFailurePlaylist ? 'selected="selected"' : ''}>--None--</option>`;
-
-    // Add playlist options
-    for (const playlist of playlists) {
-      const selected = playlist.id === currentFailurePlaylist ? 'selected="selected"' : '';
-      html += `\n          <option value="${playlist.id}" ${selected}>${playlist.name}</option>`;
-    }
-
-    html += `
-        </select>
-        <p class="notes">Select a playlist for Critical Failure Tracks</p>
-      </div>
-
-      <div class="form-group">
-        <label>Critical Failure Sound</label>
-        <select name="critical-failure-sound" class="track-select">
-          <option value="" ${!currentFailureSound ? 'selected="selected"' : ''}>--None--</option>`;
-
-    if (criticalFailureSounds.length > 0) {
-      html += `\n          <option value="random-track" ${currentFailureSound === "random-track" ? 'selected="selected"' : ''}>--Play Random Track--</option>`;
-      html += `\n          <option value="play-all" ${currentFailureSound === "play-all" ? 'selected="selected"' : ''}>--Play Playlist--</option>`;
-      
-      for (const sound of criticalFailureSounds) {
-        const soundId = sound.id ?? sound._id;
-        const selected = soundId === currentFailureSound ? 'selected="selected"' : '';
-        html += `\n          <option value="${soundId}" ${selected}>${sound.name}</option>`;
-      }
-    }
-
-    html += `
-        </select>
-        <p class="notes">Select a track/playback mode</p>
-      </div>
-
-      <button type="submit" name="submit">
-        <i class="far fa-save"></i> Save Selections
-      </button>
-    </form>`;
-
-    return $(html);
-  }
-
-  /**
-   * Update on form submit
-   * @param {*} event
-   * @param {*} formData
-   */
-  async _updateObject(event, formData) {
+  async _onSubmitForm(_event, formData) {
     const settingsData = {
       criticalSuccessPlaylist: formData["critical-success-playlist"] || "",
       criticalSuccessSound: formData["critical-success-sound"] || "",
       criticalFailurePlaylist: formData["critical-failure-playlist"] || "",
       criticalFailureSound: formData["critical-failure-sound"] || "",
     };
-    
-    // Update this.data to reflect saved values
     this.data = settingsData;
-    
     await game.settings.set(
       MAESTRO.MODULE_NAME,
       MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks,
       settingsData
     );
-    ui.notifications.info(game.i18n.localize("MAESTRO.FORM.SaveSelections") + " - Settings saved!");
-  }
-
-  activateListeners(html) {
-    super.activateListeners(html);
-    const $html = html instanceof jQuery ? html : $(html);
-
-    // Prevent form submission on Enter key or other default behaviors
-    const form = $html.find("form");
-    if (form.length > 0) {
-      form.on("submit", (event) => {
-        event.preventDefault();
-        return false;
-      });
-    }
-
-    const criticalPlaylistSelect = $html.find(
-      "select[name='critical-success-playlist']"
-    );
-    const failurePlaylistSelect = $html.find(
-      "select[name='critical-failure-playlist']"
-    );
-
-    if (criticalPlaylistSelect.length > 0) {
-      criticalPlaylistSelect.on("change", (event) => {
-        event.preventDefault();
-        this.data.criticalSuccessPlaylist = event.target.value;
-        this.render();
-      });
-    }
-
-    if (failurePlaylistSelect.length > 0) {
-      failurePlaylistSelect.on("change", (event) => {
-        event.preventDefault();
-        this.data.criticalFailurePlaylist = event.target.value;
-        this.render();
-      });
-    }
-
-    // Handle save button click explicitly
-    const saveButton = $html.find("button[type='submit']");
-    if (saveButton.length > 0) {
-      saveButton.on("click", async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        
-        // Collect form data directly from select elements to ensure we get current values
-        const formObject = {
-          "critical-success-playlist": $html.find("select[name='critical-success-playlist']").val() || "",
-          "critical-success-sound": $html.find("select[name='critical-success-sound']").val() || "",
-          "critical-failure-playlist": $html.find("select[name='critical-failure-playlist']").val() || "",
-          "critical-failure-sound": $html.find("select[name='critical-failure-sound']").val() || ""
-        };
-        
-        await this._updateObject(event, formObject);
-        this.close();
-      });
-    }
+    ui.notifications.info(`${game.i18n.localize("MAESTRO.FORM.SaveSelections")} - Settings saved!`);
   }
 }
 
@@ -280,122 +169,104 @@ export class MaestroConfigForm extends FormApplication {
  * Adds a new toggle for loop to the playlist controls
  * @param {*} html
  */
-function _addPlaylistLoopToggle(html) {
-  // Ensure html is a jQuery object
-  const $html = html instanceof jQuery ? html : $(html);
-  const playlistModeButtons = $html.find('[data-action="playlist-mode"]');
-  const loopToggleHtml = `<a class="sound-control" data-action="playlist-loop" title="${game.i18n.localize(
-    "PLAYLIST-LOOP.ButtonTooltipLoop"
-  )}">
-            <i class="fas fa-sync"></i>
-        </a>`;
-
-  playlistModeButtons.after(loopToggleHtml);
-
-  const loopToggleButtons = $html.find('[data-action="playlist-loop"]');
-
-  if (loopToggleButtons.length === 0) {
+/**
+ * Adds a loop toggle next to each playlist mode control.
+ * @param {HTMLElement} root
+ */
+function _addPlaylistLoopToggle(root) {
+  if (root.querySelector(".maestro-playlist-loop")) {
     return;
   }
 
-  // Widen the parent div
-  const controlsDiv = loopToggleButtons.closest(".playlist-controls");
-  controlsDiv.css("flex-basis", "110px");
+  const playlistModeButtons = root.querySelectorAll('[data-action="playlistMode"], [data-action="playlist-mode"]');
+  if (!playlistModeButtons.length) {
+    return;
+  }
 
-  for (const button of loopToggleButtons) {
-    const buttonClass = button.getAttribute("class");
-    const buttonTitle = button.getAttribute("title");
+  for (const modeButton of playlistModeButtons) {
+    const loopButton = document.createElement("button");
+    loopButton.type = "button";
+    loopButton.className = "maestro-playlist-loop inline-control sound-control icon fa-solid fa-sync";
+    loopButton.title = game.i18n.localize("PLAYLIST-LOOP.ButtonTooltipLoop");
+    loopButton.setAttribute("aria-label", loopButton.title);
+    modeButton.after(loopButton);
 
-    const playlistDiv = button.closest(".entity");
-    const playlistId = playlistDiv.getAttribute("data-entity-id");
-    const playlist = game.playlists.get(playlistId);
+    const playlistId = getDirectoryEntryId(modeButton);
+    const playlist = playlistId ? game.playlists.get(playlistId) : null;
+    if (!playlist) {
+      continue;
+    }
 
     const loop = playlist.getFlag(
       MAESTRO.MODULE_NAME,
       MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop
     );
-    const mode = playlist.mode;
-    if ([-1, 2].includes(mode)) {
-      button.setAttribute("class", buttonClass.concat(" disabled"));
-      button.setAttribute(
-        "title",
-        game.i18n.localize("PLAYLIST-LOOP.ButtonToolTipDisabled")
-      );
+    if ([-1, 2].includes(playlist.mode)) {
+      loopButton.classList.add("disabled");
+      loopButton.disabled = true;
+      loopButton.title = game.i18n.localize("PLAYLIST-LOOP.ButtonToolTipDisabled");
     } else if (loop === false) {
-      button.setAttribute("class", buttonClass.concat(" inactive"));
-      button.setAttribute(
-        "title",
-        game.i18n.localize("PLAYLIST-LOOP.ButtonTooltipNoLoop")
-      );
-    }
-  }
-
-  loopToggleButtons.on("click", (event) => {
-    const button = event.currentTarget;
-    const buttonClass = button.getAttribute("class");
-
-    if (!buttonClass) {
-      return;
+      loopButton.classList.add("inactive");
+      loopButton.title = game.i18n.localize("PLAYLIST-LOOP.ButtonTooltipNoLoop");
     }
 
-    const playlistDiv = button.closest(".entity");
-    const playlistId = playlistDiv.getAttribute("data-entity-id");
+    loopButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (loopButton.classList.contains("disabled")) {
+        return;
+      }
 
-    if (!playlistId) {
-      return;
-    }
+      const id = getDirectoryEntryId(loopButton);
+      if (!id) {
+        return;
+      }
 
-    if (buttonClass.includes("inactive")) {
-      game.playlists
-        .get(playlistId)
-        .unsetFlag(
+      const target = game.playlists.get(id);
+      if (!target) {
+        return;
+      }
+
+      if (loopButton.classList.contains("inactive")) {
+        target.unsetFlag(
           MAESTRO.MODULE_NAME,
           MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop
         );
-      button.setAttribute("class", buttonClass.replace(" inactive", ""));
-      button.setAttribute(
-        "title",
-        game.i18n.localize("PLAYLIST-LOOP.ButtonTooltipLoop")
-      );
-    } else {
-      game.playlists
-        .get(playlistId)
-        .setFlag(
+        loopButton.classList.remove("inactive");
+        loopButton.title = game.i18n.localize("PLAYLIST-LOOP.ButtonTooltipLoop");
+      } else {
+        target.setFlag(
           MAESTRO.MODULE_NAME,
           MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop,
           false
         );
-      button.setAttribute("class", buttonClass.concat(" inactive"));
-      button.setAttribute(
-        "title",
-        game.i18n.localize("PLAYLIST-LOOP.ButtonTooltipNoLoop")
-      );
-    }
-  });
+        loopButton.classList.add("inactive");
+        loopButton.title = game.i18n.localize("PLAYLIST-LOOP.ButtonTooltipNoLoop");
+      }
+    });
+  }
 }
 
 /**
- * PreUpdate Playlist Sound handler
- * @param {*} playlist
- * @param {*} update
- * @todo maybe return early if no flag set?
+ * PreUpdate PlaylistSound handler.
+ * Foundry v10+ passes the sound document as the first argument, not the playlist.
+ * @param {foundry.documents.PlaylistSound} sound
+ * @param {object} changed
  */
-export function _onPreUpdatePlaylistSound(playlist, update) {
-  // Return if there's no id or the playlist is not in sequential or shuffl mode
-  if (!playlist.playing || !update._id || ![0, 1].includes(playlist.mode)) {
+export function _onPreUpdatePlaylistSound(sound, changed) {
+  const playlist = sound?.parent;
+  if (!playlist?.playing || !sound.id || ![0, 1].includes(playlist.mode)) {
     return;
   }
 
-  // If the update is a sound playback ending, save it as the previous track and return
-  if (update.playing === false) {
+  if (changed.playing === false) {
     return playlist.setFlag(
       MAESTRO.MODULE_NAME,
       MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.previousSound,
-      update._id
+      sound.id
     );
   }
 
-  // Otherwise it must be a sound playback starting:
   const previousSound = playlist.getFlag(
     MAESTRO.MODULE_NAME,
     MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.previousSound
@@ -405,14 +276,9 @@ export function _onPreUpdatePlaylistSound(playlist, update) {
     return;
   }
 
-  let order;
-
-  // If shuffle order exists, use that, else map the sounds to an order
-  if (playlist.mode === 1) {
-    order = playlist.playbackOrder ?? [];
-  } else {
-    order = (playlist.sounds?.contents ?? []).map((s) => s._id);
-  }
+  const order = playlist.mode === 1
+    ? playlist.playbackOrder ?? []
+    : (playlist.sounds?.contents ?? []).map((s) => s.id ?? s._id);
 
   const previousIdx = order.indexOf(previousSound);
   const playlistloop = playlist.getFlag(
@@ -420,23 +286,33 @@ export function _onPreUpdatePlaylistSound(playlist, update) {
     MAESTRO.DEFAULT_CONFIG.PlaylistLoop.flagNames.loop
   );
 
-  // If the previous sound was the last in the order, and playlist loop is set to false, don't play the incoming sound
   if (previousIdx === (playlist.sounds?.contents?.length ?? 0) - 1 && playlistloop === false) {
-    update.playing = false;
+    changed.playing = false;
   }
 }
 
 /**
- * PreCreate Chat Message handler
+ * PreCreate Chat Message handler — suppress the core dice sound when enabled.
+ * @param {foundry.documents.ChatMessage} message
+ * @param {object} [data]
  */
-export function _onPreCreateChatMessage(message, options, userId) {
+export function _onPreCreateChatMessage(message, data) {
   const removeDiceSound = game.settings.get(
     MAESTRO.MODULE_NAME,
     MAESTRO.SETTINGS_KEYS.Misc.disableDiceSound
   );
+  const sound = message.sound ?? data?.sound;
+  if (!removeDiceSound || !sound || !/dice\.wav$/i.test(sound)) {
+    return;
+  }
 
-  if (removeDiceSound && message.sound && message.sound === "sounds/dice.wav") {
+  if (typeof message.updateSource === "function") {
+    message.updateSource({ sound: "" });
+  } else {
     message.sound = "";
+  }
+  if (data) {
+    data.sound = "";
   }
 }
 
@@ -687,7 +563,7 @@ async function _createCriticalPlaylist(create) {
   if (!create) {
     return;
   }
-  return await Playlist.create({
+  return await createPlaylist({
     name: MAESTRO.DEFAULT_CONFIG.Misc.criticalSuccessPlaylistName,
   });
 }
@@ -726,7 +602,7 @@ async function _createFailurePlaylist(create) {
   if (!create) {
     return;
   }
-  return await Playlist.create({
+  return await createPlaylist({
     name: MAESTRO.DEFAULT_CONFIG.Misc.criticalFailurePlaylistName,
   });
 }
