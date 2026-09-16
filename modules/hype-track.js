@@ -529,7 +529,7 @@ class HypeTrackActorForm extends MaestroForm {
                 playlistValue: context.playlist,
                 trackValue: context.track
             })}
-            <button type="submit" name="submit">
+            <button type="submit">
                 <i class="far fa-save"></i> ${game.i18n.localize("MAESTRO.HYPE-TRACK.FormSaveTrack")}
             </button>
         `;
@@ -554,7 +554,7 @@ class HypeTrackActorForm extends MaestroForm {
      * @param {Event} _event
      * @param {object} formData
      */
-    async _onSubmitForm(_event, formData) {
+    async _persistFormData(_event, formData) {
         const debugLogging = game.settings.get(
             MAESTRO.MODULE_NAME,
             MAESTRO.SETTINGS_KEYS.Misc.debugLogging

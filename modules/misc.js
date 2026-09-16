@@ -118,7 +118,7 @@ export class MaestroConfigForm extends MaestroForm {
         playlistValue: context.criticalFailurePlaylist,
         trackValue: context.criticalFailureSound
       })}
-      <button type="submit" name="submit">
+      <button type="submit">
         <i class="far fa-save"></i> ${game.i18n.localize("MAESTRO.FORM.SaveSelections")}
       </button>
     `;
@@ -148,7 +148,7 @@ export class MaestroConfigForm extends MaestroForm {
    * @param {Event} _event
    * @param {object} formData
    */
-  async _onSubmitForm(_event, formData) {
+  async _persistFormData(_event, formData) {
     const settingsData = {
       criticalSuccessPlaylist: formData["critical-success-playlist"] || "",
       criticalSuccessSound: formData["critical-success-sound"] || "",

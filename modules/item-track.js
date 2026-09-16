@@ -296,7 +296,7 @@ class ItemTrackForm extends MaestroForm {
                 playlistValue: context.playlist,
                 trackValue: context.track
             })}
-            <button type="submit" name="submit">
+            <button type="submit">
                 <i class="far fa-save"></i> ${game.i18n.localize("MAESTRO.FORM.SaveTrack")}
             </button>
         `;
@@ -321,7 +321,7 @@ class ItemTrackForm extends MaestroForm {
      * @param {Event} _event
      * @param {object} formData
      */
-    async _onSubmitForm(_event, formData) {
+    async _persistFormData(_event, formData) {
         this.data.currentPlaylist = formData.playlist || "";
         this.data.currentTrack = formData.track || "";
         await game.maestro.itemTrack.setItemFlags(this.item, this.data.currentPlaylist, this.data.currentTrack);

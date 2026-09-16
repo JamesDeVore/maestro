@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.11.2] - 2026-09-15
+- Stopped Hype/Item/Combat forms from native GET-submitting playlist fields into the Foundry URL
+
 ## [0.11.1] - 2026-09-15
 - Fixed a load-time crash (`game.i18n is undefined`) that prevented Maestro settings from registering
 - Settings now register on `init` even if a later Maestro feature fails to start

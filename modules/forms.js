@@ -59,22 +59,45 @@ export class MaestroForm extends ApplicationV2 {
 
     /**
      * ApplicationV2 form submission handler.
+     * Must not be named `_onSubmitForm` — that is Foundry's protected submit hook,
+     * and overriding it skips `preventDefault`, which GET-submits playlist fields into the URL.
      * @this {MaestroForm}
      * @param {SubmitEvent|Event} event
      * @param {HTMLFormElement} form
      * @param {foundry.applications.ux.FormDataExtended} formData
      */
     static async #onSubmit(event, form, formData) {
-        await this._onSubmitForm(event, formData.object ?? {});
+        event?.preventDefault?.();
+        await this._persistFormData(event, formData?.object ?? {});
     }
 
     /**
      * Persist form values. Override in subclasses.
+     * Named to avoid colliding with ApplicationV2#_onSubmitForm.
      * @param {SubmitEvent|Event} _event
      * @param {object} _formData
      * @returns {Promise<void>}
      */
-    async _onSubmitForm(_event, _formData) {}
+    async _persistFormData(_event, _formData) {}
+
+    /**
+     * Block native form navigation even if Foundry's submit hook is skipped.
+     * @param {object} context
+     * @param {object} options
+     */
+    async _onRender(context, options) {
+        await super._onRender?.(context, options);
+        const el = this.element;
+        if (!(el instanceof HTMLFormElement) || el.dataset.maestroSubmitGuard === "true") {
+            return;
+        }
+        el.dataset.maestroSubmitGuard = "true";
+        el.setAttribute("method", "dialog");
+        el.removeAttribute("action");
+        el.addEventListener("submit", (event) => {
+            event.preventDefault();
+        }, { capture: true });
+    }
 
     /**
      * Build the inner form HTML. Override in subclasses.

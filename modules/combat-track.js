@@ -336,7 +336,7 @@ class CombatTrackForm extends MaestroForm {
                     ${encounterTab}
                 </div>` : ""}
             </section>
-            <button type="submit" name="submit">
+            <button type="submit">
                 <i class="far fa-save"></i> Save
             </button>
         `;
@@ -369,7 +369,7 @@ class CombatTrackForm extends MaestroForm {
      * @param {Event} _event
      * @param {object} formData
      */
-    async _onSubmitForm(_event, formData) {
+    async _persistFormData(_event, formData) {
         await game.settings.set(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.CombatTrack.defaultPlaylist, formData["default-playlist"] || "");
         await game.settings.set(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.CombatTrack.defaultTrack, formData["default-track"] || "");
 
