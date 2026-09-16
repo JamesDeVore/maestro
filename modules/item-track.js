@@ -1,6 +1,6 @@
 import * as MAESTRO from "./config.js";
 import * as Playback from "./playback.js";
-import { createPlaylist, getActorItem, getSheetDocument, insertHeaderControl, renderApplication, toElement } from "./foundry-compat.js";
+import { createPlaylist, getActorItem, getSheetDocument, insertHeaderControl, pruneHeaderControls, renderApplication, toElement } from "./foundry-compat.js";
 import { createControlButton, hasControl, MaestroForm, PlaylistTrackFields } from "./forms.js";
 
 /**
@@ -9,6 +9,7 @@ import { createControlButton, hasControl, MaestroForm, PlaylistTrackFields } fro
 export default class ItemTrack {
     constructor() {
         this.playlist = null;
+        this._handledChatMessages = new Set();
     }
 
     /**
@@ -42,13 +43,8 @@ export default class ItemTrack {
     }
 
     /**
-     * Handles module logic for chat message card
-     * @param {Object} message - the chat message object
-     * @param {Object} html - the jquery object
-     * @param {Object} data - the data in the message update
-     */
-    /**
      * Play an item track when a chat card for that item is rendered.
+     * Dedupes `renderChatMessage` + `renderChatMessageHTML` so a card cannot play twice.
      * @param {foundry.documents.ChatMessage} message
      * @param {HTMLElement|JQuery} html
      * @param {object} [_data]
@@ -61,11 +57,13 @@ export default class ItemTrack {
 
         const root = toElement(html);
         const itemCard = root?.querySelector("[data-item-id]");
+        const messageId = message?.id ?? message?._id;
         const trackPlayed = message.getFlag(MAESTRO.MODULE_NAME, MAESTRO.DEFAULT_CONFIG.ItemTrack.flagNames.played);
-        
-        if(!itemCard || trackPlayed) {
+
+        if (!itemCard || trackPlayed || !messageId || this._handledChatMessages.has(messageId)) {
             return;
         }
+        this._handledChatMessages.add(messageId);
         
         let item;
         const itemId = itemCard.getAttribute("data-item-id");
@@ -160,7 +158,10 @@ export default class ItemTrack {
             return;
         }
 
-        if (hasControl(html, MAESTRO.DEFAULT_CONFIG.ItemTrack.name)) {
+        const headerRoots = [html, app?.element];
+        const itemSelector = `.${MAESTRO.DEFAULT_CONFIG.ItemTrack.name}, [data-maestro-control="${MAESTRO.DEFAULT_CONFIG.ItemTrack.name}"]`;
+        if (pruneHeaderControls(headerRoots, itemSelector)
+            || hasControl(headerRoots, MAESTRO.DEFAULT_CONFIG.ItemTrack.name)) {
             return;
         }
 
@@ -172,7 +173,7 @@ export default class ItemTrack {
             tag: "a"
         });
 
-        if (!insertHeaderControl([toElement(html), app?.element], itemTrackButton)) {
+        if (!insertHeaderControl(headerRoots, itemTrackButton)) {
             return;
         }
 
@@ -309,10 +310,9 @@ class ItemTrackForm extends MaestroForm {
      */
     async _onRender(context, options) {
         await super._onRender?.(context, options);
-        this.element.querySelector("select[name='playlist']")?.addEventListener("change", (event) => {
-            this.data.currentPlaylist = event.target.value;
+        this._bindPlaylistChange("playlist", (value) => {
+            this.data.currentPlaylist = value;
             this.data.currentTrack = "";
-            this.render();
         });
     }
 

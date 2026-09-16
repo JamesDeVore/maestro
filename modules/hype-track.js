@@ -1,6 +1,6 @@
 import * as MAESTRO from "./config.js";
 import * as Playback from "./playback.js";
-import { createPlaylist, getSheetDocument, insertHeaderControl, renderApplication, toElement } from "./foundry-compat.js";
+import { createPlaylist, getSheetDocument, insertHeaderControl, pruneHeaderControls, renderApplication, toElement } from "./foundry-compat.js";
 import { createControlButton, hasControl, MaestroForm, PlaylistTrackFields } from "./forms.js";
 
 export default class HypeTrack {
@@ -324,7 +324,10 @@ export default class HypeTrack {
             return;
         }
 
-        if (hasControl(html, MAESTRO.DEFAULT_CONFIG.HypeTrack.name)) {
+        const headerRoots = [html, app?.element];
+        const hypeSelector = `.${MAESTRO.DEFAULT_CONFIG.HypeTrack.name}, [data-maestro-control="${MAESTRO.DEFAULT_CONFIG.HypeTrack.name}"]`;
+        if (pruneHeaderControls(headerRoots, hypeSelector)
+            || hasControl(headerRoots, MAESTRO.DEFAULT_CONFIG.HypeTrack.name)) {
             if (debugLogging) {
                 console.debug("Maestro_pf2e | Hype button exists, skipping");
             }
@@ -339,7 +342,7 @@ export default class HypeTrack {
             tag: "a"
         });
 
-        if (!insertHeaderControl([toElement(html), app?.element], hypeButton)) {
+        if (!insertHeaderControl(headerRoots, hypeButton)) {
             if (debugLogging) {
                 console.debug("Maestro_pf2e | Hype button skip: no window header");
             }
@@ -542,10 +545,9 @@ class HypeTrackActorForm extends MaestroForm {
      */
     async _onRender(context, options) {
         await super._onRender?.(context, options);
-        this.element.querySelector("select[name='playlist']")?.addEventListener("change", (event) => {
-            this.data.playlist = event.target.value;
+        this._bindPlaylistChange("playlist", (value) => {
+            this.data.playlist = value;
             this.data.track = "";
-            this.render();
         });
     }
 

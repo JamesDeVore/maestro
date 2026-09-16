@@ -92,18 +92,70 @@ export function getActorItem(actor, itemId) {
 }
 
 /**
+ * Resolve `.window-header` from an application element or render hook HTML.
+ * @param {HTMLElement} candidate
+ * @returns {HTMLElement|null}
+ */
+function getWindowHeader(candidate) {
+    if (!candidate) {
+        return null;
+    }
+    if (candidate.classList?.contains("window-header")) {
+        return candidate;
+    }
+    return candidate.querySelector?.(".window-header") ?? null;
+}
+
+/**
+ * Keep a single matching header control and remove extras.
+ * Actor flag updates re-render sheet content but keep the window frame, so
+ * render hooks would otherwise stack another "Hype" control each save.
+ * @param {HTMLElement|HTMLElement[]|null|undefined} root
+ * @param {string} selector
+ * @returns {boolean} whether at least one matching control remains
+ */
+export function pruneHeaderControls(root, selector) {
+    const roots = (Array.isArray(root) ? root : [root])
+        .map((entry) => toElement(entry))
+        .filter(Boolean);
+    let found = false;
+    for (const candidate of roots) {
+        const header = getWindowHeader(candidate);
+        if (!header) {
+            continue;
+        }
+        const existing = [...header.querySelectorAll(selector)];
+        for (let i = 1; i < existing.length; i++) {
+            existing[i].remove();
+        }
+        if (existing.length) {
+            found = true;
+        }
+    }
+    return found;
+}
+
+/**
  * Insert a node before the window close control, or append it to the header.
  * Supports Application V1 (`.close`) and ApplicationV2 (`[data-action="close"]`) headers.
+ * Will not insert a second copy of the same Maestro header control.
  * @param {HTMLElement|HTMLElement[]|null|undefined} root
  * @param {HTMLElement} node
  * @returns {boolean} whether the node was inserted
  */
 export function insertHeaderControl(root, node) {
+    const marker = node?.dataset?.maestroControl ?? node.classList[0];
+    const selector = marker
+        ? `[data-maestro-control="${marker}"], .${marker}`
+        : `.${node.classList[0]}`;
+    if (pruneHeaderControls(root, selector)) {
+        return false;
+    }
     const roots = (Array.isArray(root) ? root : [root])
         .map((entry) => toElement(entry))
         .filter(Boolean);
     for (const candidate of roots) {
-        const header = candidate.querySelector?.(".window-header") ?? (candidate.classList?.contains("window-header") ? candidate : null);
+        const header = getWindowHeader(candidate);
         if (!header) {
             continue;
         }

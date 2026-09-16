@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.11.3] - 2026-09-15
+- Stopped duplicate "Hype" header buttons after saving a Hype Track
+- Playlist dropdowns now refresh their track lists on change
+- Item tracks no longer play twice when both chat-render hooks fire
+
 ## [0.11.2] - 2026-09-15
 - Stopped Hype/Item/Combat forms from native GET-submitting playlist fields into the Foundry URL
 

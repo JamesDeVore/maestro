@@ -133,6 +133,19 @@ export class MaestroForm extends ApplicationV2 {
     }
 
     /**
+     * Re-render when a playlist select changes so the track list updates.
+     * Uses `{ once: true }` because `_onRender` runs again after each refresh.
+     * @param {string} playlistName
+     * @param {(value: string) => void} onChange
+     */
+    _bindPlaylistChange(playlistName, onChange) {
+        this.element?.querySelector(`select[name="${playlistName}"]`)?.addEventListener("change", (event) => {
+            onChange(event.target.value);
+            this.render({ force: true });
+        }, { once: true });
+    }
+
+    /**
      * Read a named field from the currently rendered form.
      * @param {string} name
      * @returns {string}
@@ -257,6 +270,10 @@ export function createControlButton({ className, title, icon, text = "", tag = "
     const button = document.createElement(tag);
     button.className = className;
     button.title = title;
+    const marker = className?.split(/\s+/)?.find(Boolean);
+    if (marker) {
+        button.dataset.maestroControl = marker;
+    }
     if (tag === "button") {
         button.type = "button";
     }
@@ -273,11 +290,13 @@ export function createControlButton({ className, title, icon, text = "", tag = "
 
 /**
  * Return true if a control with the given class already exists under root.
- * @param {HTMLElement|JQuery} html
+ * Accepts one element or several (render HTML plus `app.element`) so header
+ * buttons are found after ApplicationV2 content-only re-renders.
+ * @param {HTMLElement|JQuery|Array<HTMLElement|JQuery|null|undefined>} html
  * @param {string} className
  * @returns {boolean}
  */
 export function hasControl(html, className) {
-    const root = toElement(html);
-    return Boolean(root?.querySelector(`.${className}`));
+    const roots = (Array.isArray(html) ? html : [html]).map((entry) => toElement(entry)).filter(Boolean);
+    return roots.some((root) => Boolean(root.querySelector(`.${className}`)));
 }

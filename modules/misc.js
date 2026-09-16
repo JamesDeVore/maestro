@@ -131,15 +131,13 @@ export class MaestroConfigForm extends MaestroForm {
    */
   async _onRender(context, options) {
     await super._onRender?.(context, options);
-    this.element.querySelector("select[name='critical-success-playlist']")?.addEventListener("change", (event) => {
-      this.data.criticalSuccessPlaylist = event.target.value;
+    this._bindPlaylistChange("critical-success-playlist", (value) => {
+      this.data.criticalSuccessPlaylist = value;
       this.data.criticalSuccessSound = "";
-      this.render();
     });
-    this.element.querySelector("select[name='critical-failure-playlist']")?.addEventListener("change", (event) => {
-      this.data.criticalFailurePlaylist = event.target.value;
+    this._bindPlaylistChange("critical-failure-playlist", (value) => {
+      this.data.criticalFailurePlaylist = value;
       this.data.criticalFailureSound = "";
-      this.render();
     });
   }
 

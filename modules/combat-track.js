@@ -1,7 +1,7 @@
 import * as MAESTRO from "./config.js";
 import * as Playback from "./playback.js";
 import { bindTabs, createPlaylist, renderApplication, toElement } from "./foundry-compat.js";
-import { hasControl, MaestroForm, PlaylistTrackFields } from "./forms.js";
+import { MaestroForm, PlaylistTrackFields } from "./forms.js";
 
 /**
  * Attach a track or playlist to combat encounters that plays when the combat begins
@@ -174,12 +174,20 @@ export default class CombatTrack {
         }
 
         const enabled = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.CombatTrack.enable);
-        if (!enabled || hasControl(html, MAESTRO.DEFAULT_CONFIG.CombatTrack.name)) {
+        if (!enabled) {
             return;
         }
 
         const root = toElement(html);
         if (!root) {
+            return;
+        }
+
+        const existing = [...root.querySelectorAll(`.${MAESTRO.DEFAULT_CONFIG.CombatTrack.name}`)];
+        if (existing.length) {
+            for (let i = 1; i < existing.length; i++) {
+                existing[i].remove();
+            }
             return;
         }
 
@@ -350,17 +358,15 @@ class CombatTrackForm extends MaestroForm {
     async _onRender(context, options) {
         await super._onRender?.(context, options);
         bindTabs(this.element, { initial: this._sheetTab });
-        this.element.querySelector("select[name='default-playlist']")?.addEventListener("change", (event) => {
-            this.data.defaultPlaylist = event.target.value;
+        this._bindPlaylistChange("default-playlist", (value) => {
+            this.data.defaultPlaylist = value;
             this.data.defaultTrack = "";
             this._sheetTab = "defaults";
-            this.render();
         });
-        this.element.querySelector("select[name='playlist']")?.addEventListener("change", (event) => {
-            this.data.currentPlaylist = event.target.value;
+        this._bindPlaylistChange("playlist", (value) => {
+            this.data.currentPlaylist = value;
             this.data.currentTrack = "";
             this._sheetTab = "encounter";
-            this.render();
         });
     }
 
