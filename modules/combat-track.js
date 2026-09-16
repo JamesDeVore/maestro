@@ -192,8 +192,9 @@ export default class CombatTrack {
         const combatTrackButton = document.createElement("button");
         combatTrackButton.type = "button";
         combatTrackButton.className = `${MAESTRO.DEFAULT_CONFIG.CombatTrack.name} inline-control icon ${MAESTRO.DEFAULT_CONFIG.CombatTrack.buttonIcon}`;
-        combatTrackButton.title = MAESTRO.DEFAULT_CONFIG.CombatTrack.aTitle;
-        combatTrackButton.setAttribute("aria-label", MAESTRO.DEFAULT_CONFIG.CombatTrack.aTitle);
+        const title = game.i18n.localize(MAESTRO.DEFAULT_CONFIG.CombatTrack.aTitle);
+        combatTrackButton.title = title;
+        combatTrackButton.setAttribute("aria-label", title);
 
         if (settingsButton) {
             settingsButton.before(combatTrackButton);
@@ -250,7 +251,7 @@ class CombatTrackForm extends MaestroForm {
     static DEFAULT_OPTIONS = {
         id: "combat-track-form",
         window: {
-            title: MAESTRO.DEFAULT_CONFIG.CombatTrack.aTitle,
+            title: "MAESTRO.COMBAT-TRACK.FormButtonTitle",
             icon: "fas fa-swords"
         }
     };

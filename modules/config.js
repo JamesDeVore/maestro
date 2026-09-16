@@ -57,7 +57,8 @@ export const DEFAULT_CONFIG = {
             playlistName: "Combat Tracks",
             buttonIcon: "fas fa-music",
             buttonText: "",
-            aTitle: game.i18n.localize("MAESTRO.COMBAT-TRACK.FormButtonTitle"),
+            /** Localization key — do not localize here; module load runs before game.i18n exists. */
+            aTitle: "MAESTRO.COMBAT-TRACK.FormButtonTitle",
             flagNames: {
                 track: "track",
                 playlist: "playlist"

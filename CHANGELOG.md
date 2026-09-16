@@ -1,5 +1,8 @@
 # Changelog
 
+## [0.11.1] - 2026-09-15
+- Fixed a load-time crash (`game.i18n is undefined`) that prevented Maestro settings from registering
+
 ## [0.11.0] - 2026-09-15
 > Foundry VTT v14 compatibility
 
