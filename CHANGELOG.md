@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.10.0] - 2026-09-15
+## [0.11.0] - 2026-09-15
 > Foundry VTT v14 compatibility
 
 - Updated module compatibility to Foundry v14
