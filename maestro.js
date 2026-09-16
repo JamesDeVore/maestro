@@ -1,11 +1,11 @@
 // @ts-check
+import { registerModuleSettings } from "./modules/settings.js";
 import CombatTrack from "./modules/combat-track.js";
 import HypeTrack from "./modules/hype-track.js";
 import ItemTrack from "./modules/item-track.js";
 import * as MAESTRO from "./modules/config.js";
 import * as Misc from "./modules/misc.js";
 import * as Playback from "./modules/playback.js";
-import { registerModuleSettings } from "./modules/settings.js";
 
 /**
  * Orchestrates (pun) module functionality
@@ -20,10 +20,18 @@ export default class Conductor {
      * Init Hook
      */
     static async _hookOnInit() {
-        Hooks.on("init", () =>{
-            game.maestro = {};
-            registerModuleSettings();
-            Conductor._initHookRegistrations();
+        Hooks.on("init", () => {
+            game.maestro = game.maestro ?? {};
+            try {
+                registerModuleSettings();
+            } catch (err) {
+                console.error("Maestro_pf2e | Failed to register settings", err);
+            }
+            try {
+                Conductor._initHookRegistrations();
+            } catch (err) {
+                console.error("Maestro_pf2e | Failed to register init hooks", err);
+            }
         });
     }
 
@@ -32,44 +40,46 @@ export default class Conductor {
      */
     static async _hookOnReady() {
         Hooks.on("ready", async () => {
+            try {
+                game.maestro.hypeTrack = new HypeTrack();
+                game.maestro.itemTrack = new ItemTrack();
+                game.maestro.combatTrack = new CombatTrack();
 
-            game.maestro.hypeTrack = new HypeTrack();
-            game.maestro.itemTrack = new ItemTrack();
-            game.maestro.combatTrack = new CombatTrack();
+                await Conductor._migrateLegacyNamespace();
 
-            await Conductor._migrateLegacyNamespace();
+                if (game.maestro.hypeTrack) {
+                    game.maestro.hypeTrack._checkForHypeTracksPlaylist();
+                    game.maestro.playHype = game.maestro.hypeTrack.playHype.bind(game.maestro.hypeTrack);
+                }
 
-            if (game.maestro.hypeTrack) {
-                game.maestro.hypeTrack._checkForHypeTracksPlaylist();
+                if (game.maestro.itemTrack) {
+                    game.maestro.itemTrack._checkForItemTracksPlaylist();
+                }
 
-                // Hype Track Macro methods
-                game.maestro.playHype = game.maestro.hypeTrack.playHype.bind(game.maestro.hypeTrack);
+                if (game.maestro.combatTrack) {
+                    game.maestro.combatTrack._checkForCombatTracksPlaylist();
+                }
+
+                Misc._checkForCriticalPlaylist();
+                Misc._checkForFailurePlaylist();
+
+                game.maestro.pause = Playback.pauseSounds;
+                game.maestro.playByName = Playback.playSoundByName;
+                game.maestro.findSound = Playback.findPlaylistSound;
+                game.maestro.pauseAll = Playback.pauseAll;
+                game.maestro.resume = Playback.resumeSounds;
+
+                if (game.user.isGM) {
+                    game.maestro.migration = {};
+                }
+            } catch (err) {
+                console.error("Maestro_pf2e | Failed during ready setup", err);
             }
 
-            if (game.maestro.itemTrack) {
-                game.maestro.itemTrack._checkForItemTracksPlaylist();
-            }
-
-            if (game.maestro.combatTrack) {
-                game.maestro.combatTrack._checkForCombatTracksPlaylist();
-            }
-
-            Misc._checkForCriticalPlaylist();
-            Misc._checkForFailurePlaylist();
-
-            // Macros/external methods
-            game.maestro.pause = Playback.pauseSounds;
-            game.maestro.playByName = Playback.playSoundByName;
-            game.maestro.findSound = Playback.findPlaylistSound;
-            game.maestro.pauseAll = Playback.pauseAll;
-            game.maestro.resume = Playback.resumeSounds;
-
-            //Set a timeout to allow the sheets to register correctly before we try to hook on them
-            window.setTimeout(Conductor._readyHookRegistrations, 500);
-            //Conductor._readyHookRegistrations();
-
-            if (game.user.isGM) {
-                game.maestro.migration = {};
+            try {
+                Conductor._readyHookRegistrations();
+            } catch (err) {
+                console.error("Maestro_pf2e | Failed to register ready hooks", err);
             }
         });
     }
@@ -170,15 +180,28 @@ export default class Conductor {
     }
 
     /**
-     * Init Hook Registrations
+     * Register Foundry hooks that Maestro needs. Called from `init` so they exist
+     * before any sheet or sidebar is rendered.
      */
     static _initHookRegistrations() {
         Conductor._hookOnRenderPlaylistDirectory();
         Conductor._hookOnRenderCombatTracker();
+        Conductor._hookOnGetHeaderControls();
+        Conductor._hookOnRenderActorSheet();
+        Conductor._hookOnRenderItemSheet();
+        Conductor._hookOnRenderChatMessage();
+        Conductor._hookOnCreateChatMessage();
+        Conductor._hookOnPreCreateChatMessage();
+        Conductor._hookOnPreUpdatePlaylistSound();
+        Conductor._hookOnPreUpdatePlaylist();
+        Conductor._hookOnPreUpdateCombat();
+        Conductor._hookOnUpdateCombat();
+        Conductor._hookOnDeleteCombat();
     }
 
     /**
-     * Ready Hook Registrations
+     * Ready-time hook registrations. Feature hooks are registered on `init`; this
+     * remains as a debug checkpoint after playlist/setup work finishes.
      */
     static _readyHookRegistrations() {
         const debug = game.settings.get(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.debugLogging);
@@ -186,30 +209,8 @@ export default class Conductor {
             console.log("Maestro_pf2e | Registering hooks...");
         }
         
-        // Sheet/App Render Hooks
-        Conductor._hookOnRenderActorSheet();
-        Conductor._hookOnRenderItemSheet();
-        Conductor._hookOnGetHeaderControls();
-        Conductor._hookOnRenderChatMessage();
-        Conductor._hookOnCreateChatMessage();
-
-        // Pre-Create Hooks
-        Conductor._hookOnPreCreateChatMessage();
-
-        // Pre-update Hooks
-        Conductor._hookOnPreUpdatePlaylistSound();
-        Conductor._hookOnPreUpdatePlaylist();
-        Conductor._hookOnPreUpdateCombat();
-
-        // Update Hooks
-        Conductor._hookOnUpdateCombat();
-        //Conductor._hookOnUpdatePlaylist();
-
-        // Delete hooks
-        Conductor._hookOnDeleteCombat();
-        
         if (debug) {
-            console.log("Maestro_pf2e | Hooks registered successfully");
+            console.log("Maestro_pf2e | Ready hooks already registered on init");
         }
     }
 
@@ -244,7 +245,7 @@ export default class Conductor {
      */
     static _hookOnPreUpdateCombat() {
         Hooks.on("preUpdateCombat", (combat, update, options, userId) => {
-            game.maestro.combatTrack._checkCombatTrack(combat, update);
+            game.maestro.combatTrack?._checkCombatTrack(combat, update);
         });
     }
 
@@ -276,7 +277,7 @@ export default class Conductor {
      */
     static _hookOnDeleteCombat() {
         Hooks.on("deleteCombat", (combat, options, userId) => {
-            game.maestro.combatTrack._stopCombatTrack(combat);
+            game.maestro.combatTrack?._stopCombatTrack(combat);
         });
     }
     
@@ -286,6 +287,7 @@ export default class Conductor {
     static _hookOnRenderActorSheet() {
         const hookNames = [
             "renderActorSheet",
+            "renderActorSheetV2",
             "renderCharacterSheetPF2e",
             "renderNPCSheetPF2e",
             "renderCreatureSheetPF2e",
@@ -310,7 +312,7 @@ export default class Conductor {
                         actorId: app?.actor?.id ?? app?.object?.id ?? app?.document?.id ?? app?.entity?.id
                     });
                 }
-                game.maestro.hypeTrack._addHypeButton(app, html, data);
+                game.maestro.hypeTrack?._addHypeButton(app, html, data);
             });
         }
        
@@ -325,7 +327,7 @@ export default class Conductor {
      */
     static _hookOnRenderChatMessage() {
         const handler = (message, html, data) => {
-            game.maestro.itemTrack.chatMessageHandler(message, html, data);
+            game.maestro.itemTrack?.chatMessageHandler(message, html, data);
         };
         Hooks.on("renderChatMessageHTML", handler);
         Hooks.on("renderChatMessage", handler);
@@ -374,14 +376,11 @@ export default class Conductor {
      * Render Item Sheet Hook
      */
     static _hookOnRenderItemSheet() {
-        if(!game.user.isGM) {
-            return;
-        }
-
-        Hooks.on("renderItemSheet", (app, html, data) => {
-            game.maestro.itemTrack._addItemTrackButton(app, html, data);
-        });
-        
+        const handler = (app, html, data) => {
+            game.maestro.itemTrack?._addItemTrackButton(app, html, data);
+        };
+        Hooks.on("renderItemSheet", handler);
+        Hooks.on("renderItemSheetV2", handler);
     }
 }
 
@@ -391,4 +390,8 @@ export default class Conductor {
  * 
  * Initiates the module
  */
-Conductor.begin();
+try {
+    Conductor.begin();
+} catch (err) {
+    console.error("Maestro_pf2e | Failed to start Conductor", err);
+}

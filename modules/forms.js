@@ -1,6 +1,41 @@
 import { escapeHtml, renderSelectOptions, toElement } from "./foundry-compat.js";
 
-const ApplicationV2 = foundry.applications.api.ApplicationV2;
+/**
+ * Resolve ApplicationV2 without throwing if Foundry's namespace is not ready yet.
+ * @returns {typeof foundry.applications.api.ApplicationV2}
+ */
+function resolveApplicationV2() {
+    return foundry?.applications?.api?.ApplicationV2
+        ?? foundry?.applications?.api?.Application
+        ?? globalThis.foundry?.applications?.api?.ApplicationV2
+        ?? null;
+}
+
+const ApplicationV2 = resolveApplicationV2() ?? class ApplicationV2Unavailable {
+    static DEFAULT_OPTIONS = {};
+
+    /**
+     * @param {object} [options]
+     */
+    constructor(options = {}) {
+        this.options = options;
+    }
+
+    /**
+     * @returns {Promise<this>}
+     */
+    async render() {
+        console.error("Maestro_pf2e | ApplicationV2 is not available; cannot open this form");
+        return this;
+    }
+
+    /**
+     * @returns {Promise<this>}
+     */
+    async close() {
+        return this;
+    }
+};
 
 /**
  * Shared ApplicationV2 form used by Maestro config windows.
@@ -145,20 +180,23 @@ export class PlaylistTrackFields {
         extraPlaylistOptions = [],
         extraTrackOptions = [],
         includePlaybackModes = true,
-        noneLabel = game.i18n.localize("MAESTRO.FORM.SelectNone")
+        noneLabel
     }) {
+        const resolvedNone = noneLabel
+            ?? game.i18n?.localize?.("MAESTRO.FORM.SelectNone")
+            ?? "--None--";
         const playlistChoices = extraPlaylistOptions.length
             ? [...extraPlaylistOptions, ...PlaylistTrackFields.playlistChoices()]
-            : [{ value: "", label: noneLabel }, ...PlaylistTrackFields.playlistChoices()];
+            : [{ value: "", label: resolvedNone }, ...PlaylistTrackFields.playlistChoices()];
         const soundChoices = PlaylistTrackFields.soundChoices(playlistValue);
         const trackChoices = extraTrackOptions.length
             ? [...extraTrackOptions]
-            : [{ value: "", label: noneLabel }];
+            : [{ value: "", label: resolvedNone }];
 
         if (includePlaybackModes && soundChoices.length) {
             trackChoices.push(
-                { value: "random-track", label: game.i18n.localize("MAESTRO.FORM.PlayRandom") },
-                { value: "play-all", label: game.i18n.localize("MAESTRO.FORM.PlayAll") }
+                { value: "random-track", label: game.i18n?.localize?.("MAESTRO.FORM.PlayRandom") ?? "--Play Random Track--" },
+                { value: "play-all", label: game.i18n?.localize?.("MAESTRO.FORM.PlayAll") ?? "--Play Playlist--" }
             );
         }
         trackChoices.push(...soundChoices);

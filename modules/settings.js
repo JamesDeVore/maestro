@@ -1,13 +1,36 @@
 import * as MAESTRO from "./config.js";
 import { _checkForCriticalPlaylist, _checkForFailurePlaylist, MaestroConfigForm } from "./misc.js";
 
+let settingsRegistered = false;
+
+/**
+ * Register a single world setting without aborting the rest of registration.
+ * @param {string} key
+ * @param {object} data
+ */
+function registerSetting(key, data) {
+    try {
+        game.settings.register(MAESTRO.MODULE_NAME, key, data);
+    } catch (err) {
+        console.error(`Maestro_pf2e | Failed to register setting "${key}"`, err);
+    }
+}
+
+/**
+ * Register Maestro module settings and the extra-config menu.
+ * Safe to call more than once.
+ */
 export const registerModuleSettings = async function() {
+    if (settingsRegistered) {
+        return;
+    }
+    settingsRegistered = true;
 
     /* -------------------------------------------- */
     /*                  Hype Track                  */
     /* -------------------------------------------- */
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.HypeTrack.enable, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.HypeTrack.enable, {
         name: "MAESTRO.SETTINGS.HypeTrackEnableN",
         hint: "MAESTRO.SETTINGS.HypeTrackEnableH",
         scope: "world",
@@ -21,9 +44,9 @@ export const registerModuleSettings = async function() {
 
             await game.maestro.hypeTrack._checkForHypeTracksPlaylist();
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.HypeTrack.pauseOthers, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.HypeTrack.pauseOthers, {
         name: "MAESTRO.SETTINGS.HypeTrackPauseOthersN",
         hint: "MAESTRO.SETTINGS.HypeTrackPauseOthersH",
         scope: "world",
@@ -31,13 +54,13 @@ export const registerModuleSettings = async function() {
         default: false,
         config: true,
         onChange: async s => {}
-    }),
+    });
 
     /* -------------------------------------------- */
     /*                  Item Track                  */
     /* -------------------------------------------- */
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.ItemTrack.enable, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.ItemTrack.enable, {
         name: "MAESTRO.SETTINGS.ItemTrackEnableN",
         hint: "MAESTRO.SETTINGS.ItemTrackEnableH",
         scope: "world",
@@ -47,9 +70,9 @@ export const registerModuleSettings = async function() {
         onChange: s => {
             
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.ItemTrack.createPlaylist, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.ItemTrack.createPlaylist, {
         name: "MAESTRO.SETTINGS.ItemTrackCreatePlaylistN",
         hint: "MAESTRO.SETTINGS.ItemTrackCreatePlaylistH",
         scope: "world",
@@ -63,9 +86,9 @@ export const registerModuleSettings = async function() {
 
             game.maestro.itemTrack._checkForItemTracksPlaylist();
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.ItemTrack.itemIdAttribute, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.ItemTrack.itemIdAttribute, {
         name: "MAESTRO.SETTINGS.ItemTrack.ItemIdAttributeN",
         hint: "MAESTRO.SETTINGS.ItemTrack.ItemIdAttributeH",
         scope: "world",
@@ -75,9 +98,9 @@ export const registerModuleSettings = async function() {
         onChange: s => {
             
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.ItemTrack.deletedItems, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.ItemTrack.deletedItems, {
         name: "MAESTRO.SETTINGS.ItemTrack.DeletedItemsN",
         hint: "MAESTRO.SETTINGS.ItemTrack.DeletedItemsH",
         scope: "world",
@@ -85,13 +108,13 @@ export const registerModuleSettings = async function() {
         default: {},
         config: false,
         onChange: s => {}
-    }),
+    });
 
     /* -------------------------------------------- */
     /*                 Combat Track                 */
     /* -------------------------------------------- */
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.CombatTrack.enable, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.CombatTrack.enable, {
         name: "MAESTRO.SETTINGS.CombatTrackEnableN",
         hint: "MAESTRO.SETTINGS.CombatTrackEnableH",
         scope: "world",
@@ -101,9 +124,9 @@ export const registerModuleSettings = async function() {
         onChange: s => {
             
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.CombatTrack.createPlaylist, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.CombatTrack.createPlaylist, {
         name: "MAESTRO.SETTINGS.CombatTrackCreatePlaylistN",
         hint: "MAESTRO.SETTINGS.CombatTrackCreatePlaylistH",
         scope: "world",
@@ -117,9 +140,9 @@ export const registerModuleSettings = async function() {
 
             game.maestro.combatTrack._checkForCombatTracksPlaylist();
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.CombatTrack.defaultPlaylist, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.CombatTrack.defaultPlaylist, {
         name: "MAESTRO.SETTINGS.CombatTrackDefaultPlaylistN",
         hint: "MAESTRO.SETTINGS.CombatTrackDefaultPlaylistH",
         scope: "world",
@@ -128,9 +151,9 @@ export const registerModuleSettings = async function() {
         onChange: s => {
             
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.CombatTrack.defaultTrack, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.CombatTrack.defaultTrack, {
         name: "MAESTRO.SETTINGS.CombatTrackDefaultTrackN",
         hint: "MAESTRO.SETTINGS.CombatTrackDefaultTrackH",
         scope: "world",
@@ -139,9 +162,9 @@ export const registerModuleSettings = async function() {
         onChange: s => {
             
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.CombatTrack.pauseOthers, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.CombatTrack.pauseOthers, {
         name: "MAESTRO.SETTINGS.CombatTrack.PauseOthersN",
         hint: "MAESTRO.SETTINGS.CombatTrack.PauseOthersH",
         scope: "world",
@@ -149,13 +172,13 @@ export const registerModuleSettings = async function() {
         default: false,
         config: true,
         onChange: async s => {}
-    }),
+    });
 
     /* -------------------------------------------- */
     /*                   Migration                  */
     /* -------------------------------------------- */
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Migration.currentVersion, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Migration.currentVersion, {
         name: "MAESTRO.SETTINGS.MigrateCurrentVersionN",
         hint: "MAESTRO.SETTINGS.MigrateCurrentVersionH",
         scope: "world",
@@ -164,22 +187,22 @@ export const registerModuleSettings = async function() {
         onChange: s => {
 
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Migration.legacyNamespaceMigrated, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Migration.legacyNamespaceMigrated, {
         name: "SETTINGS.MigrateLegacyNamespaceN",
         hint: "SETTINGS.MigrateLegacyNamespaceH",
         scope: "world",
         type: Boolean,
         default: false,
         config: false
-    }),
+    });
 
     /* -------------------------------------------- */
     /*                     Misc                     */
     /* -------------------------------------------- */
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.disableDiceSound, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Misc.disableDiceSound, {
         name: "SETTINGS.DisableDiceSoundN",
         hint: "SETTINGS.DisableDiceSoundH",
         scope: "world",
@@ -189,9 +212,9 @@ export const registerModuleSettings = async function() {
         onChange: s => {
 
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.debugLogging, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Misc.debugLogging, {
         name: "SETTINGS.DebugLoggingN",
         hint: "SETTINGS.DebugLoggingH",
         scope: "world",
@@ -199,9 +222,9 @@ export const registerModuleSettings = async function() {
         default: false,
         config: true,
         onChange: s => {}
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.enableCriticalSuccessFailureTracks, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Misc.enableCriticalSuccessFailureTracks, {
         name: "SETTINGS.EnableCriticalSuccessFailureTracksN",
         hint: "SETTINGS.EnableCriticalSuccessFailureTracksH",
         scope: "world",
@@ -211,9 +234,9 @@ export const registerModuleSettings = async function() {
         onChange: s => {
 
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.createCriticalSuccessPlaylist, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Misc.createCriticalSuccessPlaylist, {
         name: "SETTINGS.CreateCriticalSuccessPlaylistN",
         hint: "SETTINGS.CreateCriticalSuccessPlaylistH",
         scope: "world",
@@ -227,9 +250,9 @@ export const registerModuleSettings = async function() {
 
             _checkForCriticalPlaylist();
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.createCriticalFailurePlaylist, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Misc.createCriticalFailurePlaylist, {
         name: "SETTINGS.CreateCriticalFailurePlaylistN",
         hint: "SETTINGS.CreateCriticalFailurePlaylistH",
         scope: "world",
@@ -243,26 +266,26 @@ export const registerModuleSettings = async function() {
 
             _checkForFailurePlaylist();
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessFailureTracks, {
         name: "SETTINGS.CriticalSuccessFailureTracksN",
         hint: "SETTINGS.CriticalSuccessFailureTracksH",
         scope: "world",
         type: Object,
         default: {
-            criticalSuccessPlaylist: game.playlists ? game.playlists.contents.find(p => p.name === MAESTRO.DEFAULT_CONFIG.Misc.criticalSuccessPlaylistName) : "",
+            criticalSuccessPlaylist: "",
             criticalSuccessSound: "",
-            criticalFailurePlaylist: game.playlists ? game.playlists.contents.find(p => p.name === MAESTRO.DEFAULT_CONFIG.Misc.criticalFailurePlaylistName) : "",
+            criticalFailurePlaylist: "",
             criticalFailureSound: ""
         },
         config: false,
         onChange: s => {
 
         }
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.criticalDieFaces, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Misc.criticalDieFaces, {
         name: "MAESTRO.SETTINGS.CriticalSuccessFailureTracks.DieFacesN",
         hint: "MAESTRO.SETTINGS.CriticalSuccessFailureTracks.DieFacesH",
         scope: "world",
@@ -270,9 +293,9 @@ export const registerModuleSettings = async function() {
         default: 20,
         config: true,
         onChange: s => {}
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessThreshold, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Misc.criticalSuccessThreshold, {
         name: "MAESTRO.SETTINGS.CriticalSuccessFailureTracks.SuccessThresholdN",
         hint: "MAESTRO.SETTINGS.CriticalSuccessFailureTracks.SuccessThresholdH",
         scope: "world",
@@ -280,9 +303,9 @@ export const registerModuleSettings = async function() {
         default: 20,
         config: true,
         onChange: s => {}
-    }),
+    });
 
-    game.settings.register(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.criticalFailureThreshold, {
+    registerSetting(MAESTRO.SETTINGS_KEYS.Misc.criticalFailureThreshold, {
         name: "MAESTRO.SETTINGS.CriticalSuccessFailureTracks.FailureThresholdN",
         hint: "MAESTRO.SETTINGS.CriticalSuccessFailureTracks.FailureThresholdH",
         scope: "world",
@@ -290,14 +313,26 @@ export const registerModuleSettings = async function() {
         default: 1,
         config: true,
         onChange: s => {}
-    }),
+    });
 
-    game.settings.registerMenu(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.maestroConfigMenu,{
-        name: "MAESTRO.SETTINGS.Config.ButtonN",
-        label: MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTitle,
-        hint: "MAESTRO.SETTINGS.Config.ButtonH",
-        icon: "fas fa-cog",
-        type: MaestroConfigForm,
-        restricted: true
-    })
-}
+    try {
+        game.settings.registerMenu(MAESTRO.MODULE_NAME, MAESTRO.SETTINGS_KEYS.Misc.maestroConfigMenu, {
+            name: "MAESTRO.SETTINGS.Config.ButtonN",
+            label: MAESTRO.DEFAULT_CONFIG.Misc.maestroConfigTitle,
+            hint: "MAESTRO.SETTINGS.Config.ButtonH",
+            icon: "fas fa-cog",
+            type: MaestroConfigForm,
+            restricted: true
+        });
+    } catch (err) {
+        console.error("Maestro_pf2e | Failed to register Maestro Config menu", err);
+    }
+};
+
+Hooks.once("init", () => {
+    try {
+        registerModuleSettings();
+    } catch (err) {
+        console.error("Maestro_pf2e | Failed to register settings on init", err);
+    }
+});
